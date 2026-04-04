@@ -1,0 +1,839 @@
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useSpring,
+  useMotionValue,
+  useAnimationFrame,
+  useInView,
+  animate,
+} from 'motion/react';
+import { ArrowRight } from 'lucide-react';
+import conf from '../assests/confe.png';
+import emp from '../assests/empl.png';
+import heroVideo from '../assests/hero1.mp4';
+
+/* ─────────────────────────────────────────────
+   TYPES
+───────────────────────────────────────────── */
+type OccasionItem = {
+  title: string;
+  img: string;
+  accent: string;
+  tag: string;
+  path: string;
+};
+
+type ProcessStepItem = {
+  step: string;
+  title: string;
+  desc: string;
+  tag: 'Discovery' | 'Design' | 'Delivery';
+  detail: string;
+};
+
+type Bundle = {
+  title: string;
+  tier: string;
+  price: string;
+  desc: string;
+  img: string;
+  x: number;
+};
+
+type Particle = {
+  id: number;
+  x: number;
+  y: number;
+};
+
+/* ─────────────────────────────────────────────
+   HOOKS
+───────────────────────────────────────────── */
+function useTilt(strength = 12) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const rotateX = useMotionValue(0);
+  const rotateY = useMotionValue(0);
+  const glareX = useMotionValue(50);
+  const glareY = useMotionValue(50);
+  const springConfig = { stiffness: 200, damping: 22, mass: 0.6 };
+  const springX = useSpring(rotateX, springConfig);
+  const springY = useSpring(rotateY, springConfig);
+
+  const onMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!ref.current) return;
+      const rect = ref.current.getBoundingClientRect();
+      const dx = (e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2);
+      const dy = (e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2);
+      rotateY.set(dx * strength);
+      rotateX.set(-dy * strength);
+      glareX.set(50 + dx * 30);
+      glareY.set(50 + dy * 30);
+    },
+    [strength, rotateX, rotateY, glareX, glareY]
+  );
+
+  const onMouseLeave = useCallback(() => {
+    rotateX.set(0);
+    rotateY.set(0);
+    glareX.set(50);
+    glareY.set(50);
+  }, [rotateX, rotateY, glareX, glareY]);
+
+  return { ref, springX, springY, glareX, glareY, onMouseMove, onMouseLeave };
+}
+
+function useFloat(amplitude = 10, speed = 0.0008) {
+  const y = useMotionValue(0);
+  const rotateZ = useMotionValue(0);
+  useAnimationFrame((t) => {
+    y.set(Math.sin(t * speed) * amplitude);
+    rotateZ.set(Math.sin(t * speed * 0.6) * 0.4);
+  });
+  return { y, rotateZ };
+}
+
+function useMagnetic(strength = 0.35) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const springX = useSpring(x, { stiffness: 350, damping: 28 });
+  const springY = useSpring(y, { stiffness: 350, damping: 28 });
+
+  const onMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!ref.current) return;
+      const rect = ref.current.getBoundingClientRect();
+      x.set((e.clientX - (rect.left + rect.width / 2)) * strength);
+      y.set((e.clientY - (rect.top + rect.height / 2)) * strength);
+    },
+    [strength, x, y]
+  );
+
+  const onMouseLeave = useCallback(() => {
+    x.set(0);
+    y.set(0);
+  }, [x, y]);
+
+  return { ref, springX, springY, onMouseMove, onMouseLeave };
+}
+
+export function useNavbarTransparency(heroRef: React.RefObject<HTMLElement | null>) {
+  const [isTransparent, setIsTransparent] = useState(true);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!heroRef.current) return;
+      const heroBottom = heroRef.current.getBoundingClientRect().bottom;
+      setIsTransparent(heroBottom > 0);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [heroRef]);
+
+  return isTransparent;
+}
+
+/* ─────────────────────────────────────────────
+   DATA
+───────────────────────────────────────────── */
+export const occasionData: OccasionItem[] = [
+  { title: 'Client Partnerships', img: 'https://plus.unsplash.com/premium_photo-1770375699097-0c84230ef551?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=60&w=3000', accent: '#b5a26a', tag: 'B2B', path: '/occasions/client-appreciation' },
+  { title: 'Employee Onboarding', img: emp, accent: '#5a8a6e', tag: 'HR', path: '/occasions/employee-onboarding' },
+  { title: 'Festive Gifting', img: 'https://m.media-amazon.com/images/I/911DmteGNkL.jpg', accent: '#c4735d', tag: 'Seasonal', path: '/occasions/festive-gifting' },
+  { title: 'Events & Conferences', img: conf, accent: '#6b7fa3', tag: 'Events', path: '/occasions/events-conferences' },
+  { title: 'Employee Wellness', img: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=2020&auto=format&fit=crop', accent: '#8a7db5', tag: 'Wellness', path: '/occasions/employee-wellness' },
+  { title: 'Birthday Gifting', img: 'https://temptationscakes.com.sg/cdn/shop/articles/unnamed3.jpg?v=1753454464', accent: '#d4856a', tag: 'Personal', path: '/occasions/birthday-gifting' },
+  { title: 'Work Anniversary', img: 'https://parade.com/.image/w_2560%2Cq_auto%3Agood%2Cc_fill%2Car_4%3A3/MTk1NTMwNTI5MzM5MDkwNTAx/work-anniversary-wishes-and-messages.jpg?arena_f_auto=', accent: '#7a9e7e', tag: 'Milestone', path: '/occasions/work-anniversary' },
+  { title: 'Product Launch', img: 'https://images.unsplash.com/photo-1556741533-974f8e62a92d?q=80&w=1974&auto=format&fit=crop', accent: '#5b8fa8', tag: 'Brand', path: '/occasions/product-launch' },
+  { title: 'Award & Recognition', img: 'https://www.applauz.me/hs-fs/hubfs/Resources/group-people-are-celebrating-with-trophy-air.jpg?height=420&name=group-people-are-celebrating-with-trophy-air.jpg&width=800', accent: '#c4a23a', tag: 'Culture', path: '/occasions/award-recognition' },
+  { title: 'Retirement Gifting', img: 'https://m.media-amazon.com/images/I/81uwXmahKQL.jpg', accent: '#9c7bb5', tag: 'Farewell', path: '/occasions/retirement-gifting' },
+];
+
+const processSteps: ProcessStepItem[] = [
+  { step: '01', title: 'Tell us your requirement', desc: 'Share your budget, timeline, and company vision with our experts. We listen before we create.', tag: 'Discovery', detail: '15-min call' },
+  { step: '02', title: 'We design your experience', desc: 'Our designers curate custom bundles tailored to your brand identity, values, and recipients.', tag: 'Design', detail: '3–5 days' },
+  { step: '03', title: 'We deliver at scale', desc: 'Eco-friendly logistics ensure your gifts arrive perfectly, sustainably, and on time — every time.', tag: 'Delivery', detail: 'Pan-India' },
+];
+
+/* ─────────────────────────────────────────────
+   PARTICLE TRAIL
+   Disabled on touch devices (phones/tablets)
+───────────────────────────────────────────── */
+function ParticleTrail() {
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const idRef = useRef(0);
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    const id = idRef.current++;
+    setParticles((prev) => [...prev.slice(-18), { id, x: e.clientX, y: e.clientY }]);
+    setTimeout(() => setParticles((prev) => prev.filter((p) => p.id !== id)), 700);
+  }, []);
+
+  useEffect(() => {
+    if (isTouch) return;
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [handleMouseMove, isTouch]);
+
+  if (isTouch) return null;
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+      {particles.map((p) => (
+        <motion.div
+          key={p.id}
+          initial={{ x: p.x - 4, y: p.y - 4, scale: 1, opacity: 0.55 }}
+          animate={{ scale: 0, opacity: 0 }}
+          transition={{ duration: 0.7, ease: 'easeOut' }}
+          style={{ position: 'fixed', width: 8, height: 8, borderRadius: '50%', backgroundColor: '#b5a26a', top: 0, left: 0 }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   OCCASION CARD
+   Breakpoints:
+     xs   → 2 cols  (grid-cols-2)
+     sm   → 3 cols  (sm:grid-cols-3)
+     md   → 4 cols  (md:grid-cols-4)
+     lg   → 5 cols  (lg:grid-cols-5)
+───────────────────────────────────────────── */
+function OccasionCard({ item, index }: { item: OccasionItem; index: number }) {
+  const navigate = useNavigate();
+  const [hovered, setHovered] = useState(false);
+  const { ref, springX, springY, glareX, glareY, onMouseMove, onMouseLeave } = useTilt(13);
+
+  const shadowX = useTransform(springY, [-13, 13], [-16, 16]);
+  const shadowY = useTransform(springX, [-13, 13], [16, -16]);
+  const boxShadow = useTransform(
+    [shadowX, shadowY],
+    ([sx, sy]) => hovered
+      ? `${sx}px ${sy}px 40px rgba(0,0,0,0.18), 0 2px 10px rgba(0,0,0,0.07)`
+      : '0 4px 16px rgba(0,0,0,0.07)'
+  );
+  const glareStyle = useTransform(
+    [glareX, glareY],
+    ([gx, gy]) =>
+      `radial-gradient(ellipse 60% 50% at ${gx}% ${gy}%, rgba(255,255,255,0.22) 0%, transparent 70%)`
+  );
+
+  const handleClick = useCallback(() => navigate(item.path), [navigate, item.path]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.65, rotateX: -40, rotateY: index % 2 === 0 ? -16 : 16, y: 50 }}
+      whileInView={{ opacity: 1, scale: 1, rotateX: 0, rotateY: 0, y: 0 }}
+      viewport={{ once: false, amount: 0.08 }}
+      transition={{
+        duration: 0.85,
+        delay: Math.min(index * 0.07, 0.45),
+        ease: [0.16, 1, 0.3, 1],
+        opacity: { duration: 0.45, delay: Math.min(index * 0.07, 0.45) },
+      }}
+      style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}
+      className="group cursor-pointer"
+      onClick={handleClick}
+      role="button"
+      tabIndex={0}
+      aria-label={`Explore ${item.title}`}
+      onKeyDown={(e) => e.key === 'Enter' && handleClick()}
+    >
+      <motion.div
+        ref={ref}
+        onMouseMove={onMouseMove}
+        onMouseLeave={() => { onMouseLeave(); setHovered(false); }}
+        onMouseEnter={() => setHovered(true)}
+        style={{ rotateX: springX, rotateY: springY, transformStyle: 'preserve-3d', willChange: 'transform', boxShadow }}
+        className="relative rounded-sm overflow-hidden bg-white border border-gray-100"
+      >
+        <motion.div
+          className="absolute inset-0 pointer-events-none z-20"
+          style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%, rgba(0,0,0,0.08) 100%)' }}
+          animate={{ opacity: hovered ? 1 : 0 }}
+          transition={{ duration: 0.3 }}
+        />
+
+        <div className="aspect-[3/4] overflow-hidden relative">
+          <motion.img
+            src={item.img}
+            alt={item.title}
+            referrerPolicy="no-referrer"
+            className="w-full h-full object-cover"
+            style={{ willChange: 'transform' }}
+            animate={{ scale: hovered ? 1.08 : 1 }}
+            transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+          />
+          <motion.div
+            className="absolute inset-0 pointer-events-none"
+            style={{ backgroundColor: item.accent }}
+            animate={{ opacity: hovered ? 0.18 : 0 }}
+            transition={{ duration: 0.4 }}
+          />
+          <motion.div
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: glareStyle }}
+            animate={{ opacity: hovered ? 1 : 0 }}
+            transition={{ duration: 0.3 }}
+          />
+          <motion.span
+            animate={{ y: hovered ? 0 : -28, opacity: hovered ? 1 : 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+            className="absolute top-2 left-2 sm:top-3 sm:left-3 text-[8px] sm:text-[9px] uppercase tracking-[0.16em] font-bold text-white px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-sm"
+            style={{ backgroundColor: item.accent }}
+          >
+            {item.tag}
+          </motion.span>
+          <motion.div
+            animate={{ opacity: hovered ? 1 : 0, y: hovered ? 0 : 10 }}
+            transition={{ duration: 0.25 }}
+            className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap text-white text-[8px] sm:text-[9px] uppercase tracking-[0.15em] font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-sm flex items-center gap-1"
+            style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}
+          >
+            View <ArrowRight size={8} />
+          </motion.div>
+        </div>
+
+        <motion.div className="p-2.5 sm:p-3 lg:p-4 relative overflow-hidden">
+          <motion.div
+            className="absolute bottom-0 left-0 h-[3px]"
+            style={{ backgroundColor: item.accent }}
+            animate={{ width: hovered ? '100%' : '0%' }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          />
+          <h4 className="font-bold text-xs sm:text-sm lg:text-base mb-1 sm:mb-1.5 leading-snug">{item.title}</h4>
+          <div className="text-[8px] sm:text-[9px] lg:text-[10px] font-bold uppercase tracking-widest text-brand-olive flex items-center gap-1">
+            <motion.span animate={{ x: hovered ? 3 : 0 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
+              Explore
+            </motion.span>
+            <motion.span
+              animate={{ rotate: hovered ? 45 : 0, x: hovered ? 2 : 0 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 18 }}
+              style={{ display: 'inline-flex' }}
+            >
+              <ArrowRight size={9} />
+            </motion.span>
+          </div>
+        </motion.div>
+
+        <div className="absolute inset-0 rounded-sm pointer-events-none" style={{ boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.06)' }} />
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   BUNDLE CARD
+   Stacked on mobile → side-by-side on md+
+───────────────────────────────────────────── */
+function BundleCard({ bundle }: { bundle: Bundle }) {
+  const { ref: tiltRef, springX, springY, onMouseMove, onMouseLeave } = useTilt(5);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const isInView = useInView(cardRef, { once: false, amount: 0.12 });
+  const [phase, setPhase] = useState('hidden');
+  const [shockwave, setShockwave] = useState(false);
+  const [scanLine, setScanLine] = useState(false);
+  const isLeft = bundle.x < 0;
+
+  useEffect(() => {
+    if (isInView && phase === 'hidden') {
+      setPhase('warping');
+      const t1 = setTimeout(() => { setShockwave(true); setScanLine(true); setPhase('landed'); }, 820);
+      const t2 = setTimeout(() => setShockwave(false), 1220);
+      const t3 = setTimeout(() => { setScanLine(false); setPhase('settled'); }, 1500);
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }
+    if (!isInView) { setPhase('hidden'); setShockwave(false); setScanLine(false); }
+  }, [isInView]);
+
+  const isVisible = phase !== 'hidden';
+
+  return (
+    <div ref={cardRef} style={{ perspective: '1400px', position: 'relative' }}>
+      {shockwave && (
+        <>
+          <motion.div initial={{ scale: 0.8, opacity: 0.8 }} animate={{ scale: 3.2, opacity: 0 }} transition={{ duration: 0.55, ease: 'easeOut' }} style={{ position: 'absolute', inset: 0, borderRadius: 4, zIndex: 40, pointerEvents: 'none', border: '2.5px solid rgba(181,162,106,0.7)' }} />
+          <motion.div initial={{ scale: 0.8, opacity: 0.5 }} animate={{ scale: 2, opacity: 0 }} transition={{ duration: 0.4, delay: 0.08, ease: 'easeOut' }} style={{ position: 'absolute', inset: 0, borderRadius: 4, zIndex: 39, pointerEvents: 'none', border: '1.5px solid rgba(181,162,106,0.5)' }} />
+        </>
+      )}
+
+      {phase === 'warping' && (
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 5 }}>
+          {[...Array(8)].map((_, i) => (
+            <motion.div key={i} initial={{ opacity: 0.7, scaleX: 0.3 }} animate={{ opacity: 0, scaleX: 4 }} transition={{ duration: 0.5, delay: i * 0.035, ease: 'easeIn' }}
+              style={{ position: 'absolute', top: `${8 + i * 11}%`, left: isLeft ? '10%' : '50%', width: '40%', height: 1.5, background: `rgba(181,162,106,${0.7 - i * 0.07})`, transformOrigin: isLeft ? 'left center' : 'right center' }}
+            />
+          ))}
+        </div>
+      )}
+
+      <motion.div
+        initial={{ opacity: 0, x: isLeft ? -100 : 100, y: -60, rotateX: 35, rotateY: isLeft ? -25 : 25, scale: 0.55, filter: 'blur(10px) brightness(2)' }}
+        animate={isVisible ? { opacity: 1, x: 0, y: 0, rotateX: 0, rotateY: 0, scale: 1, filter: 'blur(0px) brightness(1)' } : { opacity: 0, x: isLeft ? -100 : 100, y: -60, rotateX: 35, rotateY: isLeft ? -25 : 25, scale: 0.55, filter: 'blur(10px) brightness(2)' }}
+        transition={{ duration: 0.85, ease: [0.12, 0.88, 0.26, 1.05], opacity: { duration: 0.38 }, filter: { duration: 0.5 }, scale: { duration: 0.85 } }}
+        style={{ transformStyle: 'preserve-3d', willChange: 'transform, filter' }}
+      >
+        <motion.div animate={phase === 'landed' || phase === 'settled' ? { y: [0, -8, 3, -1, 0], rotateZ: [0, isLeft ? 1 : -1, isLeft ? -0.4 : 0.4, 0] } : {}} transition={{ duration: 0.55, delay: 0.05, ease: 'easeOut' }}>
+          <motion.div initial={{ opacity: 0 }} animate={isVisible ? { opacity: [0, 0.6, 0] } : { opacity: 0 }} transition={{ duration: 0.7, delay: 0.25, ease: 'easeOut' }} style={{ position: 'absolute', inset: -24, borderRadius: 8, zIndex: -1, pointerEvents: 'none', background: 'radial-gradient(ellipse at center, rgba(181,162,106,0.45) 0%, transparent 70%)' }} />
+          <motion.div
+            ref={tiltRef}
+            onMouseMove={onMouseMove}
+            onMouseLeave={onMouseLeave}
+            style={{ rotateX: springX, rotateY: springY, transformStyle: 'preserve-3d', willChange: 'transform' }}
+            whileHover={{ scale: 1.015, transition: { type: 'spring', stiffness: 200, damping: 22 } }}
+            className="bg-white rounded-sm overflow-hidden shadow-lg flex flex-col md:flex-row border border-gray-100 relative"
+          >
+            <motion.div className="absolute inset-0 pointer-events-none z-10" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 50%)' }} whileHover={{ opacity: 1 }} initial={{ opacity: 0 }} transition={{ duration: 0.3 }} />
+
+            {/* Image — full width on mobile, half on md+ */}
+            <div className="w-full md:w-1/2 h-52 sm:h-60 md:h-auto overflow-hidden relative">
+              <motion.div className="absolute inset-0 pointer-events-none z-10" style={{ boxShadow: 'inset 0 0 40px rgba(181,162,106,0.15)' }} whileHover={{ boxShadow: 'inset 0 0 60px rgba(181,162,106,0.32)' }} transition={{ duration: 0.4 }} />
+              <motion.img src={bundle.img} alt={bundle.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" whileHover={{ scale: 1.07 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} style={{ willChange: 'transform' }} />
+              {scanLine && (
+                <motion.div initial={{ y: '-100%' }} animate={{ y: '200%' }} transition={{ duration: 0.45, ease: 'linear' }} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(to bottom, transparent 0%, rgba(181,162,106,0.35) 50%, transparent 100%)' }} />
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="w-full md:w-1/2 p-6 sm:p-8 md:p-10 flex flex-col justify-between relative overflow-hidden">
+              <motion.div initial={{ scaleX: 0 }} animate={phase === 'settled' ? { scaleX: 1 } : { scaleX: 0 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }} style={{ position: 'absolute', top: 0, left: 0, width: '28%', height: 2, background: '#b5a26a', transformOrigin: 'left' }} />
+              <motion.div initial={{ scaleY: 0 }} animate={phase === 'settled' ? { scaleY: 1 } : { scaleY: 0 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }} style={{ position: 'absolute', top: 0, left: 0, width: 2, height: '22%', background: '#b5a26a', transformOrigin: 'top' }} />
+              <div>
+                <motion.span initial={{ opacity: 0, y: 12 }} animate={phase === 'settled' ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.5, delay: 0.05 }} className="text-[10px] uppercase tracking-widest font-bold text-brand-olive mb-3 block">{bundle.tier}</motion.span>
+                <motion.h3 initial={{ opacity: 0, x: isLeft ? -18 : 18 }} animate={phase === 'settled' ? { opacity: 1, x: 0 } : {}} transition={{ duration: 0.55, delay: 0.12, ease: [0.22, 1, 0.36, 1] }} className="text-xl sm:text-2xl font-bold font-serif mb-3 sm:mb-4">{bundle.title}</motion.h3>
+                <motion.p initial={{ opacity: 0 }} animate={phase === 'settled' ? { opacity: 1 } : {}} transition={{ duration: 0.5, delay: 0.22 }} className="text-gray-600 text-sm leading-relaxed mb-5 sm:mb-6">{bundle.desc}</motion.p>
+              </div>
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={phase === 'settled' ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.45, delay: 0.32 }} className="flex items-center">
+                <motion.button
+                  whileHover={{ scale: 1.15, boxShadow: '0 8px 24px rgba(0,0,0,0.18)' }}
+                  whileTap={{ scale: 0.88 }}
+                  style={{ willChange: 'transform' }}
+                  onClick={() => window.location.href = '/products'}
+                  className="h-10 px-6 bg-brand-olive text-white flex items-center justify-center hover:bg-brand-dark-olive transition-colors text-sm font-bold"
+                >Explore</motion.button>
+              </motion.div>
+            </div>
+          </motion.div>
+        </motion.div>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   PROCESS STEP ICONS
+───────────────────────────────────────────── */
+const ProcessIcons: Record<ProcessStepItem['tag'], JSX.Element> = {
+  Discovery: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b5a26a" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  ),
+  Design: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b5a26a" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+    </svg>
+  ),
+  Delivery: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b5a26a" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/>
+      <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+    </svg>
+  ),
+};
+
+/* ─────────────────────────────────────────────
+   PROCESS STEP
+───────────────────────────────────────────── */
+function ProcessStep({ item, index }: { item: ProcessStepItem; index: number }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const isInView = useInView(ref, { once: false, amount: 0.15 });
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 40 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
+      transition={{ duration: 0.7, delay: index * 0.12, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ y: -6, transition: { type: 'spring', stiffness: 300, damping: 22 } }}
+      className="relative flex flex-col"
+      style={{ background: '#fff', borderRadius: 4, padding: 'clamp(18px, 3.5vw, 36px) clamp(14px, 3vw, 32px)', border: '1px solid rgba(181,162,106,0.18)', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}
+    >
+      <motion.div initial={{ scaleX: 0 }} animate={isInView ? { scaleX: 1 } : { scaleX: 0 }} transition={{ duration: 0.55, delay: index * 0.12 + 0.3, ease: [0.22, 1, 0.36, 1] }} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: '#b5a26a', borderRadius: '4px 4px 0 0', transformOrigin: 'left' }} />
+      <div className="flex items-start justify-between mb-4 sm:mb-6">
+        <motion.div
+          initial={{ scale: 0, rotate: -20 }}
+          animate={isInView ? { scale: 1, rotate: 0 } : { scale: 0, rotate: -20 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 18, delay: index * 0.12 + 0.25 }}
+          style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(181,162,106,0.08)', border: '1.5px solid rgba(181,162,106,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+        >{ProcessIcons[item.tag]}</motion.div>
+        <span className="font-serif leading-none select-none" style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', color: 'transparent', WebkitTextStroke: '1.5px rgba(181,162,106,0.25)', lineHeight: 1 }}>{item.step}</span>
+      </div>
+      <span className="text-[9px] uppercase tracking-[0.2em] font-bold mb-2.5 sm:mb-3 inline-block" style={{ background: 'rgba(181,162,106,0.1)', color: '#b5a26a', padding: '3px 8px', borderRadius: 2, alignSelf: 'flex-start' }}>{item.tag}</span>
+      <h3 className="text-base sm:text-lg lg:text-xl font-serif font-bold mb-2 sm:mb-3 leading-snug text-gray-900">{item.title}</h3>
+      <p className="text-xs sm:text-sm text-gray-500 leading-relaxed flex-1">{item.desc}</p>
+      <div className="flex items-center gap-2 mt-4 sm:mt-6 pt-4 sm:pt-5" style={{ borderTop: '1px solid rgba(181,162,106,0.15)' }}>
+        <div style={{ width: 16, height: 1, background: '#b5a26a', opacity: 0.5 }} />
+        <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400">{item.detail}</span>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   ANIMATED COUNTER
+───────────────────────────────────────────── */
+function AnimatedCounter({ value }: { value: string }) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const isInView = useInView(ref, { once: false, amount: 0.5 });
+  const [displayed, setDisplayed] = useState(0);
+  const numericValue = parseInt(value.replace(/[^0-9]/g, ''), 10);
+  const prefix = value.match(/^[^0-9]*/)?.[0] ?? '';
+  const postfix = value.match(/[^0-9]*$/)?.[0] ?? '';
+
+  useEffect(() => {
+    if (!isInView) { setDisplayed(0); return; }
+    const controls = animate(0, numericValue, { duration: 1.8, ease: [0.22, 1, 0.36, 1], onUpdate: (v) => setDisplayed(Math.floor(v)) });
+    return controls.stop;
+  }, [isInView, numericValue]);
+
+  return <span ref={ref}>{prefix}{displayed.toLocaleString()}{postfix}</span>;
+}
+
+/* ─────────────────────────────────────────────
+   HOME
+───────────────────────────────────────────── */
+export const Home = () => {
+  const heroRef = useRef<HTMLElement | null>(null);
+  const { scrollYProgress: heroScroll } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
+  const heroTextY = useTransform(heroScroll, [0, 1], ['0%', '20%']);
+  const heroOpacity = useTransform(heroScroll, [0, 0.7], [1, 0]);
+  const { y: floatY, rotateZ: floatRotZ } = useFloat(9, 0.00075);
+  void floatY; void floatRotZ;
+  const springHeroTextY = useSpring(heroTextY, { stiffness: 80, damping: 25 });
+
+  const impactRef = useRef<HTMLElement | null>(null);
+  const { scrollYProgress: impactScroll } = useScroll({ target: impactRef, offset: ['start end', 'end start'] });
+  const impactImgY = useTransform(impactScroll, [0, 1], ['-8%', '8%']);
+  const springImpactY = useSpring(impactImgY, { stiffness: 70, damping: 20 });
+
+  const { ref: magnetRef, springX: magX, springY: magY, onMouseMove: magMove, onMouseLeave: magLeave } = useMagnetic(0.28);
+
+  const isNavTransparent = useNavbarTransparency(heroRef);
+  useEffect(() => {
+    document.body.setAttribute('data-nav-transparent', isNavTransparent ? 'true' : 'false');
+  }, [isNavTransparent]);
+
+  const titleWords = ['Tailored', 'Gifting,'];
+  const subtitleWords = ['Designed', 'for', 'You.'];
+
+  return (
+    <div className="overflow-x-hidden">
+      <ParticleTrail />
+
+      {/* ══════════════════════════════════════
+          HERO
+          Phone   → text top, CTA below (column)
+          md+     → text left, CTA right (row)
+          All devices → min-h: 100svh (safe viewport)
+      ══════════════════════════════════════ */}
+      <section
+        ref={heroRef}
+        className="relative min-h-[100svh] flex items-end
+          pb-14 sm:pb-18 md:pb-20
+          px-5 sm:px-8 md:px-14 lg:px-16 xl:px-20 2xl:px-28"
+        style={{ perspective: '1400px' }}
+      >
+        {/* Video BG */}
+        <div className="absolute inset-0 overflow-hidden z-0">
+          <video autoPlay muted loop playsInline className="w-full h-full object-cover" style={{ filter: 'brightness(0.42)' }}>
+            <source src={heroVideo} type="video/mp4" />
+          </video>
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(105deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.28) 55%, rgba(0,0,0,0.08) 100%)' }} />
+          <div className="absolute bottom-0 left-0 right-0 h-32" style={{ background: 'linear-gradient(to top, rgba(181,162,106,0.12) 0%, transparent 100%)' }} />
+        </div>
+
+        {/* Content row */}
+        <motion.div
+          style={{ y: springHeroTextY, opacity: heroOpacity, willChange: 'transform' }}
+          className="relative z-10 w-full flex flex-col gap-7 md:flex-row md:items-end md:justify-between"
+        >
+          {/* Headline */}
+          <div className="max-w-[90vw] sm:max-w-sm md:max-w-lg lg:max-w-2xl xl:max-w-3xl 2xl:max-w-4xl">
+            <h1 className="
+              text-[2.4rem] leading-[1.05]
+              sm:text-5xl
+              md:text-6xl
+              lg:text-7xl
+              xl:text-8xl
+              2xl:text-9xl
+              font-serif text-white
+            ">
+              <div className="flex flex-wrap gap-x-3 sm:gap-x-4 lg:gap-x-5">
+                {titleWords.map((word, i) => (
+                  <motion.span key={word} initial={{ rotateX: -90, opacity: 0, y: 40 }} animate={{ rotateX: 0, opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.2 + i * 0.15, ease: [0.22, 1, 0.36, 1] }} style={{ display: 'inline-block', transformOrigin: 'bottom center', transformStyle: 'preserve-3d' }}>{word}</motion.span>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-x-3 sm:gap-x-4 italic font-normal">
+                {subtitleWords.map((word, i) => (
+                  <motion.span key={word} initial={{ rotateX: -90, opacity: 0, y: 40 }} animate={{ rotateX: 0, opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.5 + i * 0.14, ease: [0.22, 1, 0.36, 1] }} style={{ display: 'inline-block', transformOrigin: 'bottom center', transformStyle: 'preserve-3d' }}>{word}</motion.span>
+                ))}
+              </div>
+            </h1>
+          </div>
+
+          {/* CTA button */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 1.0 }} className="flex-shrink-0">
+            <motion.div ref={magnetRef} style={{ x: magX, y: magY }} onMouseMove={magMove} onMouseLeave={magLeave}>
+              <motion.button
+                whileHover={{ scale: 1.05, boxShadow: '0 12px 32px rgba(0,0,0,0.18)', y: -2 }}
+                whileTap={{ scale: 0.95, y: 1 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 18 }}
+                style={{ willChange: 'transform' }}
+                className="w-full md:w-auto bg-brand-dark-olive text-white px-7 sm:px-8 py-4 rounded-sm font-bold uppercase tracking-widest text-xs hover:bg-brand-olive transition-all"
+                onClick={() => document.querySelector('#occasions')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                Explore Occasions
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+
+        {/* Scroll indicator — hidden on very small phones */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2, duration: 0.8 }} className="absolute bottom-5 sm:bottom-7 left-1/2 -translate-x-1/2 z-10 hidden sm:flex flex-col items-center gap-2">
+          <span className="text-white/50 text-[9px] uppercase tracking-[0.3em] font-bold">Scroll</span>
+          <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }} style={{ width: 1, height: 28, background: 'linear-gradient(to bottom, rgba(181,162,106,0.8), transparent)' }} />
+        </motion.div>
+      </section>
+
+      {/* ══════════════════════════════════════
+          OCCASIONS GRID
+          xs  → 2 cols
+          sm  → 3 cols
+          md  → 4 cols
+          lg+ → 5 cols
+      ══════════════════════════════════════ */}
+      <section
+        id="occasions"
+        className="
+          py-14 sm:py-20 md:py-24 lg:py-28 xl:py-32
+          px-4 sm:px-8 md:px-14 lg:px-16 xl:px-20 2xl:px-28
+          bg-white overflow-hidden
+        "
+      >
+        <div className="max-w-[1700px] mx-auto">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.15 }} transition={{ duration: 0.6, ease: 'easeOut' }} className="mb-8 sm:mb-12 lg:mb-16 flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-6">
+            <div>
+              <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: false, amount: 0.3 }} transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }} style={{ originX: 0 }} className="w-14 sm:w-20 lg:w-24 h-1 bg-brand-olive mb-4 sm:mb-5 lg:mb-6" />
+              <h2 className="text-2xl sm:text-4xl md:text-5xl xl:text-6xl font-serif leading-tight">
+                Gifting for Every Occasion
+              </h2>
+            </div>
+            <motion.div initial={{ opacity: 0, scale: 0.8 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: false, amount: 0.3 }} transition={{ duration: 0.5, delay: 0.2 }} className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] font-bold text-brand-olive/70 flex-shrink-0">
+              <span className="w-6 sm:w-8 h-px bg-brand-olive/40 inline-block" />
+              {occasionData.length} Occasions
+            </motion.div>
+          </motion.div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-4 lg:gap-5 xl:gap-6" style={{ perspective: '1600px' }}>
+            {occasionData.map((item, i) => (
+              <OccasionCard key={item.title} item={item} index={i} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════
+          PROCESS
+          Mobile  → 1 col
+          sm      → 2 col
+          md+     → 3 col
+      ══════════════════════════════════════ */}
+      <section className="bg-brand-beige py-14 sm:py-20 md:py-24 lg:py-28 xl:py-32 px-4 sm:px-8 md:px-14 lg:px-16 xl:px-20 2xl:px-28 overflow-hidden">
+        <div className="max-w-[1700px] mx-auto">
+          <div className="mb-8 sm:mb-12 lg:mb-16 flex flex-col md:flex-row md:items-end md:justify-between gap-4 sm:gap-6">
+            <div>
+              <motion.p initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: false, amount: 0.4 }} transition={{ duration: 0.6 }} className="text-xs uppercase font-bold tracking-[0.3em] text-brand-olive mb-4 sm:mb-5 flex items-center gap-3">
+                <span className="w-8 sm:w-10 h-px bg-brand-olive inline-block" />Our Process
+              </motion.p>
+              <motion.h2 initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.4 }} transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }} className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-serif leading-[1.08]">
+                Seamless<br /><span className="italic font-normal text-brand-olive">Corporate</span> Gifting
+              </motion.h2>
+            </div>
+          </div>
+
+          <div className="relative hidden md:block mb-0">
+            <div style={{ position: 'absolute', top: 72, left: '16.666%', right: '16.666%', height: 1, background: 'rgba(181,162,106,0.18)', zIndex: 0 }}>
+              <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: false, amount: 0.5 }} transition={{ duration: 1.1, delay: 0.4, ease: [0.22, 1, 0.36, 1] }} style={{ height: '100%', background: '#b5a26a', transformOrigin: 'left' }} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 lg:gap-6 relative z-10">
+            {processSteps.map((item, i) => <ProcessStep key={item.step} item={item} index={i} />)}
+          </div>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.3 }} transition={{ duration: 0.6, delay: 0.3 }} className="mt-8 sm:mt-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 pt-8 sm:pt-10" style={{ borderTop: '1px solid rgba(181,162,106,0.2)' }}>
+            <p className="text-sm text-gray-500 max-w-xl leading-relaxed">Ready to start? Our team typically responds within 2 business hours.</p>
+            <motion.button whileHover={{ x: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }} whileTap={{ scale: 0.97 }} transition={{ type: 'spring', stiffness: 340, damping: 22 }} onClick={() => window.location.href = '/contact'} className="w-full sm:w-auto flex items-center justify-center gap-3 bg-brand-dark-olive text-white px-6 sm:px-7 py-3.5 rounded-sm text-xs font-bold uppercase tracking-widest">
+              Start the Conversation <ArrowRight size={14} />
+            </motion.button>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════
+          CURATED EXPERIENCES
+          Mobile  → 1 col
+          md+     → 2 col
+      ══════════════════════════════════════ */}
+      <section className="py-14 sm:py-20 md:py-24 lg:py-28 xl:py-32 px-4 sm:px-8 md:px-14 lg:px-16 xl:px-20 2xl:px-28 bg-white">
+        <div className="max-w-[1700px] mx-auto">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.15 }} transition={{ duration: 0.6 }} className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-8 sm:mb-12 lg:mb-16">
+            <div>
+              <h2 className="text-2xl sm:text-4xl md:text-5xl font-serif mb-2 sm:mb-4">Curated Experiences</h2>
+              <p className="text-gray-600 text-sm sm:text-base">Our signature collections designed for high-impact professional gifting.</p>
+            </div>
+            <motion.a className="self-start sm:self-auto font-bold text-xs uppercase tracking-widest border-b-2 border-brand-olive pb-1 hover:text-brand-olive transition-all cursor-pointer flex-shrink-0" whileHover={{ y: -1 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>View All Bundles</motion.a>
+          </motion.div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-8 lg:gap-10">
+            {[
+              { title: 'Executive Gift Box', tier: 'Premium Tier', price: '₹4500', desc: 'Hand-pressed recycled paper journals, organic tea blends, and artisanal ceramics.', img: 'https://reanpackaging.com/wp-content/uploads/elementor/thumbs/1-1-qyl1mj7qhtcqwazuccldtnc4arxys4urhcy5zv9u74.jpg', x: -60 },
+              { title: 'Onboarding Kits', tier: 'Essentials Tier', price: '₹2500', desc: 'Everything a new hire needs: Bamboo water bottles, cork coasters, and upcycled bags.', img: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=2040&auto=format&fit=crop', x: 60 },
+            ].map((bundle) => <BundleCard key={bundle.title} bundle={bundle} />)}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════
+          IMPACT NARRATIVE
+          Mobile → stacked (image → quote → text)
+          lg+    → side by side, quote overlaps
+      ══════════════════════════════════════ */}
+      <section ref={impactRef} className="bg-brand-beige py-14 sm:py-20 md:py-24 lg:py-28 px-4 sm:px-8 md:px-14 lg:px-16 xl:px-20 2xl:px-28 overflow-hidden">
+        <div className="max-w-[1700px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-14 lg:gap-20 items-center">
+
+          {/* Left — circle image + quote card */}
+          <motion.div initial={{ opacity: 0, scale: 0.8 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: false, amount: 0.15 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} className="relative">
+            <div className="aspect-square rounded-full overflow-hidden border-[8px] sm:border-[10px] lg:border-[12px] border-white shadow-2xl max-w-[280px] sm:max-w-sm md:max-w-md lg:max-w-full mx-auto lg:mx-0">
+              <motion.img src="https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=2070&auto=format&fit=crop" alt="Artisan weaving" style={{ y: springImpactY, scale: 1.08, willChange: 'transform' }} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            </div>
+
+            {/* Quote — below image on mobile, overlapping on lg */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: false, amount: 0.15 }}
+              transition={{ duration: 0.6, delay: 0.35 }}
+              whileHover={{ y: -4, boxShadow: '0 20px 48px rgba(0,0,0,0.13)' }}
+              className="
+                mt-5 lg:mt-0
+                lg:absolute lg:-bottom-10 lg:right-0 xl:-right-4
+                bg-white p-5 sm:p-6 md:p-8 rounded-sm shadow-xl
+                max-w-full sm:max-w-sm
+              "
+              style={{ willChange: 'transform' }}
+            >
+              <p className="italic font-serif text-base sm:text-lg text-brand-dark-olive mb-3 sm:mb-4">
+                "Through Ecotwist, our community's weaving tradition has found a global stage."
+              </p>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-6 sm:w-8 h-px bg-brand-olive flex-shrink-0" />
+                <p className="text-[10px] uppercase font-bold tracking-widest text-gray-500">Saanvi, Mithila artist</p>
+              </div>
+            </motion.div>
+          </motion.div>
+
+          {/* Right — text content */}
+          <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.15 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }} className="lg:pl-8 xl:pl-10 pt-2 lg:pt-12">
+            <p className="text-xs uppercase tracking-[0.3em] font-bold text-brand-olive mb-4 sm:mb-6">Our Global Footprint</p>
+            <h2 className="text-2xl sm:text-4xl md:text-5xl xl:text-6xl font-serif mb-5 sm:mb-8 leading-tight">
+              Beyond Gifting: A Cycle of Positive Impact
+            </h2>
+            <p className="text-base sm:text-lg text-gray-600 mb-8 sm:mb-12 leading-relaxed">
+              Every gift box you order directly supports circular economy initiatives and provides fair wages to master artisans across five continents.
+            </p>
+            <div className="grid grid-cols-2 gap-6 sm:gap-10">
+              {[{ value: '1,000+', label: 'Lives Impacted' }, { value: '12', label: 'SDGs Addressed' }].map((stat, i) => (
+                <motion.div key={stat.label} initial={{ opacity: 0, scale: 0.5 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: false, amount: 0.3 }} transition={{ type: 'spring', stiffness: 180, damping: 14, delay: 0.2 + i * 0.15 }} whileHover={{ scale: 1.06 }}>
+                  <h4 className="text-2xl sm:text-3xl font-bold font-serif text-brand-olive"><AnimatedCounter value={stat.value} /></h4>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mt-1.5 sm:mt-2">{stat.label}</p>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════
+          IMPACT STATS BAR
+          Mobile → vertical stack, centered
+          sm+    → horizontal row
+      ══════════════════════════════════════ */}
+      <section className="bg-brand-beige py-8 sm:py-10 px-4 sm:px-8 md:px-14 border-y border-gray-200">
+        <div className="max-w-[1700px] mx-auto flex flex-col sm:flex-row justify-center sm:justify-between gap-6 sm:gap-8 text-center">
+          {[{ label: 'CO₂ Reduced (KG)', value: '1000+' }, { label: 'Sustainable Materials', value: '100%' }, { label: 'Artisan Families', value: '100+' }].map((stat, i) => (
+            <motion.div key={stat.label} initial={{ opacity: 0, scale: 0.5 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: false, amount: 0.3 }} transition={{ type: 'spring', stiffness: 200, damping: 12, delay: i * 0.12 }} whileHover={{ scale: 1.07, y: -3 }} className="flex-1 min-w-[120px] sm:min-w-[160px]" style={{ willChange: 'transform' }}>
+              <h3 className="text-2xl sm:text-3xl font-bold font-serif text-brand-olive"><AnimatedCounter value={stat.value} /></h3>
+              <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mt-1.5 sm:mt-2">{stat.label}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════
+          FINAL CTA
+          Mobile  → smaller text, stacked buttons, full-width
+          sm+     → inline buttons
+          2xl     → max-width cap
+      ══════════════════════════════════════ */}
+      <section className="py-12 sm:py-16 md:py-20 lg:py-24 text-center bg-brand-off-white px-4 sm:px-8">
+        <div className="max-w-[320px] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl 2xl:max-w-5xl mx-auto">
+          <motion.h2
+            initial={{ opacity: 0, letterSpacing: '-0.05em', y: 20 }}
+            whileInView={{ opacity: 1, letterSpacing: '-0.01em', y: 0 }}
+            viewport={{ once: false, amount: 0.3 }}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            className="font-serif text-[2rem] sm:text-5xl md:text-6xl lg:text-7xl mb-5 sm:mb-8 leading-tight"
+          >
+            Ready to make an <br /><span className="italic font-normal">Impression?</span>
+          </motion.h2>
+          <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.3 }} transition={{ duration: 0.6, delay: 0.15 }} className="text-sm sm:text-xl text-gray-600 mb-7 sm:mb-8 max-w-2xl mx-auto leading-relaxed">
+            Join over 50+ forward-thinking companies choosing sustainable corporate gifting.
+          </motion.p>
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.3 }} transition={{ duration: 0.6, delay: 0.25 }} className="flex flex-col sm:flex-row justify-center items-stretch sm:items-center gap-4 sm:gap-8">
+            <motion.button
+              whileHover={{ scale: 1.06, y: -3, boxShadow: '0 18px 40px rgba(0,0,0,0.2)' }}
+              whileTap={{ scale: 0.95, y: 1 }}
+              onClick={() => window.location.href = '/contact'}
+              transition={{ type: 'spring', stiffness: 300, damping: 18 }}
+              style={{ willChange: 'transform' }}
+              className="bg-brand-dark-olive text-white px-8 sm:px-12 lg:px-14 py-4 sm:py-5 lg:py-6 rounded-sm uppercase tracking-[0.2em] text-xs font-bold hover:bg-brand-olive transition-all shadow-2xl"
+            >
+              Partner with Us
+            </motion.button>
+            <motion.button
+              whileHover={{ y: -3 }}
+              onClick={() => window.location.href = '/configurator'}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+              className="text-brand-charcoal uppercase tracking-[0.2em] text-xs font-bold border-b-2 border-brand-charcoal/20 hover:border-brand-olive transition-all pb-1 self-center"
+            >
+              Schedule a Consultation
+            </motion.button>
+          </motion.div>
+        </div>
+      </section>
+    </div>
+  );
+};
