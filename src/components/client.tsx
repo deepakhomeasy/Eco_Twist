@@ -5,6 +5,8 @@ import bharatx from '../assests/bhartex.png';
 import ecotwist from '../assests/ecotwist.png';
 import infratech from '../assests/bharatx.png';
 import Casters from '../assests/casters.png';
+import kynyz from '../assests/kynyx logo.png';
+import cehro from '../assests/cehro india logo.png';
 
 type Client = {
   id: number;
@@ -15,11 +17,11 @@ type Client = {
 const clients: Client[] = [
   { id: 1, name: "BiddRx", logo: "https://www.biddrx.com/Images/logo.png" },
   { id: 2, name: "Casters Global", logo: Casters },
-  { id: 3, name: "Cehro India", logo: "https://www.cehroindia.org/assets/cehro%20logo%201.png" },
+  { id: 3, name: "Cehro India", logo: cehro },
   { id: 4, name: "Sumedha Agro", logo: "https://sumedhaagro.com/assets/Logo-DFEZMT6g.webp" },
   { id: 5, name: "Homeasy", logo: Homeasy },
   { id: 6, name: "Bharatx Ventures", logo: bharatx },
-  { id: 7, name: "Kynyx", logo: "https://kynyx.com/assets/logo12-rzpEHoIw.png" },
+  { id: 7, name: "Kynyx", logo: kynyz },
   { id: 8, name: "EcoTwist", logo: ecotwist },
   { id: 9, name: "Bharatx Infratech", logo: infratech },
 ];
@@ -56,10 +58,10 @@ export default function OurClients() {
     className="
       w-auto flex-shrink-0 rounded-3xl p-4
       h-20 md:h-24
-      bg-gray-100
+      
       hover:bg-white
-      border border-gray-50
-      shadow-sm hover:shadow-[0_20px_60px_rgba(0,0,0,0.15)]
+      
+      
       flex items-center justify-center
     "
   >

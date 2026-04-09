@@ -579,7 +579,7 @@ function BundleCard({ bundle }: { bundle: Bundle }) {
 /* ─────────────────────────────────────────────
    PROCESS STEP ICONS
 ───────────────────────────────────────────── */
-const ProcessIcons: Record<ProcessStepItem['tag'], JSX.Element> = {
+const ProcessIcons: Record<ProcessStepItem['tag'], React.ReactNode> = {
   Discovery: (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b5a26a" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
