@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -10,11 +11,11 @@ import {
   useInView,
   animate,
 } from 'motion/react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import conf from '../assests/confe.png';
 import emp from '../assests/empl.png';
 import heroVideo from '../assests/hero1.mp4';
-
+import OurClients from '../components/client';
 /* ─────────────────────────────────────────────
    TYPES
 ───────────────────────────────────────────── */
@@ -30,7 +31,7 @@ type ProcessStepItem = {
   step: string;
   title: string;
   desc: string;
-  tag: 'Discovery' | 'Design' | 'Delivery';
+  tag: 'Discovery' | 'Design' | 'Delivery'| 'Support';
   detail: string;
 };
 
@@ -138,6 +139,34 @@ export function useNavbarTransparency(heroRef: React.RefObject<HTMLElement | nul
   return isTransparent;
 }
 
+function useOccasionSliderConfig() {
+  const [config, setConfig] = useState({ visibleCount: 2, gap: 10 });
+
+  useEffect(() => {
+    const updateConfig = () => {
+      const width = window.innerWidth;
+
+      if (width >= 1280) {
+        setConfig({ visibleCount: 5, gap: 24 });
+      } else if (width >= 1024) {
+        setConfig({ visibleCount: 5, gap: 20 });
+      } else if (width >= 768) {
+        setConfig({ visibleCount: 4, gap: 16 });
+      } else if (width >= 640) {
+        setConfig({ visibleCount: 3, gap: 16 });
+      } else {
+        setConfig({ visibleCount: 2, gap: 10 });
+      }
+    };
+
+    updateConfig();
+    window.addEventListener('resize', updateConfig);
+    return () => window.removeEventListener('resize', updateConfig);
+  }, []);
+
+  return config;
+}
+
 /* ─────────────────────────────────────────────
    DATA
 ───────────────────────────────────────────── */
@@ -158,6 +187,7 @@ const processSteps: ProcessStepItem[] = [
   { step: '01', title: 'Tell us your requirement', desc: 'Share your budget, timeline, and company vision with our experts. We listen before we create.', tag: 'Discovery', detail: '15-min call' },
   { step: '02', title: 'We design your experience', desc: 'Our designers curate custom bundles tailored to your brand identity, values, and recipients.', tag: 'Design', detail: '3–5 days' },
   { step: '03', title: 'We deliver at scale', desc: 'Eco-friendly logistics ensure your gifts arrive perfectly, sustainably, and on time — every time.', tag: 'Delivery', detail: 'Pan-India' },
+  { step: '04', title: 'Ongoing support & feedback', desc: 'We stay connected post-delivery to ensure satisfaction, gather feedback, and continuously improve your gifting experience.', tag: 'Support', detail: 'Always on' },
 ];
 
 /* ─────────────────────────────────────────────
@@ -204,11 +234,6 @@ function ParticleTrail() {
 
 /* ─────────────────────────────────────────────
    OCCASION CARD
-   Breakpoints:
-     xs   → 2 cols  (grid-cols-2)
-     sm   → 3 cols  (sm:grid-cols-3)
-     md   → 4 cols  (md:grid-cols-4)
-     lg   → 5 cols  (lg:grid-cols-5)
 ───────────────────────────────────────────── */
 function OccasionCard({ item, index }: { item: OccasionItem; index: number }) {
   const navigate = useNavigate();
@@ -256,7 +281,7 @@ function OccasionCard({ item, index }: { item: OccasionItem; index: number }) {
         onMouseLeave={() => { onMouseLeave(); setHovered(false); }}
         onMouseEnter={() => setHovered(true)}
         style={{ rotateX: springX, rotateY: springY, transformStyle: 'preserve-3d', willChange: 'transform', boxShadow }}
-        className="relative rounded-sm overflow-hidden bg-white border border-gray-100"
+        className="relative rounded-2xl overflow-hidden bg-white border border-gray-100"
       >
         <motion.div
           className="absolute inset-0 pointer-events-none z-20"
@@ -334,8 +359,130 @@ function OccasionCard({ item, index }: { item: OccasionItem; index: number }) {
 }
 
 /* ─────────────────────────────────────────────
+   OCCASIONS SLIDER
+   Infinite loop + left/right buttons
+───────────────────────────────────────────── */
+function OccasionSlider({ items }: { items: OccasionItem[] }) {
+  const total = items.length;
+  const { visibleCount, gap } = useOccasionSliderConfig();
+  const [index, setIndex] = useState(total);
+  const [isAnimating, setIsAnimating] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  const duplicatedItems = [...items, ...items, ...items];
+  const slideWidth = `calc((100% - ${(visibleCount - 1) * gap}px) / ${visibleCount})`;
+  const translateX = `calc(-${index} * ((100% - ${(visibleCount - 1) * gap}px) / ${visibleCount} + ${gap}px))`;
+
+  const goNext = useCallback(() => setIndex((prev) => prev + 1), []);
+  const goPrev = useCallback(() => setIndex((prev) => prev - 1), []);
+
+  // Resize: animation band karo, index normalize karo, phir re-enable karo
+  useEffect(() => {
+    setIsAnimating(false);
+    setIndex((prev) => total + ((((prev - total) % total) + total) % total));
+  }, [visibleCount, total]);
+
+  useEffect(() => {
+    if (isAnimating) return;
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setIsAnimating(true)); // double RAF for paint flush
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [isAnimating]);
+
+
+   useEffect(() => {
+    if (isHovered) return;
+    const interval = window.setInterval(() => {
+      setIndex((prev) => prev + 1);
+    }, 2800);
+
+    return () => window.clearInterval(interval);
+  }, [isHovered]);
+
+  // motion.div ki jagah plain div + native transitionend
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+
+    const handleTransitionEnd = (e: TransitionEvent) => {
+      // sirf transform transition pe react karo
+      if (e.propertyName !== 'transform') return;
+
+      const normalizedIndex = ((index % total) + total) % total;
+      if (index >= total * 2 || index < total) {
+        setIsAnimating(false);
+        setIndex(total + normalizedIndex);
+      }
+    };
+
+    el.addEventListener('transitionend', handleTransitionEnd);
+    return () => el.removeEventListener('transitionend', handleTransitionEnd);
+  }, [index, total]);
+
+  // Auto-play (uncomment karna ho toh)
+  // useEffect(() => {
+  //   if (isHovered) return;
+  //   const id = window.setInterval(() => setIndex((p) => p + 1), 2800);
+  //   return () => clearInterval(id);
+  // }, [isHovered]);
+
+  return (
+    <div className="relative">
+      <motion.button
+        type="button"
+        aria-label="Previous occasions"
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.94 }}
+        onClick={goPrev}
+        className="absolute left-0 top-1/2 -translate-y-1/2 z-20 h-9 w-9 sm:h-11 sm:w-11 lg:h-12 lg:w-12 rounded-full bg-white/95 border border-gray-200 shadow-lg flex items-center justify-center text-brand-dark-olive hover:bg-brand-dark-olive hover:text-white transition-all"
+      >
+        <ChevronLeft size={18} />
+      </motion.button>
+
+      <div
+        className="mx-10 sm:mx-12 lg:mx-14 overflow-hidden"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {/* motion.div → plain div, ref attach kiya */}
+        <div
+          ref={trackRef}
+          style={{
+            display: 'flex',
+            gap: `${gap}px`,
+            transform: `translateX(${translateX})`,
+            transition: isAnimating ? 'transform 0.75s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
+            willChange: 'transform',
+          }}
+        >
+          {duplicatedItems.map((item, i) => (
+            <div
+              key={`${item.title}-${i}`}
+              style={{ flex: `0 0 ${slideWidth}`, minWidth: slideWidth }}
+            >
+              <OccasionCard item={item} index={i % total} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <motion.button
+        type="button"
+        aria-label="Next occasions"
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.94 }}
+        onClick={goNext}
+        className="absolute right-0 top-1/2 -translate-y-1/2 z-20 h-9 w-9 sm:h-11 sm:w-11 lg:h-12 lg:w-12 rounded-full bg-white/95 border border-gray-200 shadow-lg flex items-center justify-center text-brand-dark-olive hover:bg-brand-dark-olive hover:text-white transition-all"
+      >
+        <ChevronRight size={18} />
+      </motion.button>
+    </div>
+  );
+}
+/* ─────────────────────────────────────────────
    BUNDLE CARD
-   Stacked on mobile → side-by-side on md+
 ───────────────────────────────────────────── */
 function BundleCard({ bundle }: { bundle: Bundle }) {
   const { ref: tiltRef, springX, springY, onMouseMove, onMouseLeave } = useTilt(5);
@@ -396,7 +543,6 @@ function BundleCard({ bundle }: { bundle: Bundle }) {
           >
             <motion.div className="absolute inset-0 pointer-events-none z-10" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 50%)' }} whileHover={{ opacity: 1 }} initial={{ opacity: 0 }} transition={{ duration: 0.3 }} />
 
-            {/* Image — full width on mobile, half on md+ */}
             <div className="w-full md:w-1/2 h-52 sm:h-60 md:h-auto overflow-hidden relative">
               <motion.div className="absolute inset-0 pointer-events-none z-10" style={{ boxShadow: 'inset 0 0 40px rgba(181,162,106,0.15)' }} whileHover={{ boxShadow: 'inset 0 0 60px rgba(181,162,106,0.32)' }} transition={{ duration: 0.4 }} />
               <motion.img src={bundle.img} alt={bundle.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" whileHover={{ scale: 1.07 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} style={{ willChange: 'transform' }} />
@@ -405,7 +551,6 @@ function BundleCard({ bundle }: { bundle: Bundle }) {
               )}
             </div>
 
-            {/* Content */}
             <div className="w-full md:w-1/2 p-6 sm:p-8 md:p-10 flex flex-col justify-between relative overflow-hidden">
               <motion.div initial={{ scaleX: 0 }} animate={phase === 'settled' ? { scaleX: 1 } : { scaleX: 0 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }} style={{ position: 'absolute', top: 0, left: 0, width: '28%', height: 2, background: '#b5a26a', transformOrigin: 'left' }} />
               <motion.div initial={{ scaleY: 0 }} animate={phase === 'settled' ? { scaleY: 1 } : { scaleY: 0 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }} style={{ position: 'absolute', top: 0, left: 0, width: 2, height: '22%', background: '#b5a26a', transformOrigin: 'top' }} />
@@ -452,6 +597,11 @@ const ProcessIcons: Record<ProcessStepItem['tag'], JSX.Element> = {
       <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
     </svg>
   ),
+   Support: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b5a26a" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a4 4 0 0 1-4 4H7l-4 4V5a2 2 0 0 1 2-2h12a4 4 0 0 1 4 4z"/>
+    </svg>
+  ),
 };
 
 /* ─────────────────────────────────────────────
@@ -469,7 +619,7 @@ function ProcessStep({ item, index }: { item: ProcessStepItem; index: number }) 
       transition={{ duration: 0.7, delay: index * 0.12, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -6, transition: { type: 'spring', stiffness: 300, damping: 22 } }}
       className="relative flex flex-col"
-      style={{ background: '#fff', borderRadius: 4, padding: 'clamp(18px, 3.5vw, 36px) clamp(14px, 3vw, 32px)', border: '1px solid rgba(181,162,106,0.18)', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}
+      style={{ background: '#fff', borderRadius: 4, padding:'clamp(12px, 2vw, 20px) clamp(10px, 2vw, 18px)', border: '1px solid rgba(181,162,106,0.18)', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}
     >
       <motion.div initial={{ scaleX: 0 }} animate={isInView ? { scaleX: 1 } : { scaleX: 0 }} transition={{ duration: 0.55, delay: index * 0.12 + 0.3, ease: [0.22, 1, 0.36, 1] }} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: '#b5a26a', borderRadius: '4px 4px 0 0', transformOrigin: 'left' }} />
       <div className="flex items-start justify-between mb-4 sm:mb-6">
@@ -479,12 +629,12 @@ function ProcessStep({ item, index }: { item: ProcessStepItem; index: number }) 
           transition={{ type: 'spring', stiffness: 260, damping: 18, delay: index * 0.12 + 0.25 }}
           style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(181,162,106,0.08)', border: '1.5px solid rgba(181,162,106,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
         >{ProcessIcons[item.tag]}</motion.div>
-        <span className="font-serif leading-none select-none" style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', color: 'transparent', WebkitTextStroke: '1.5px rgba(181,162,106,0.25)', lineHeight: 1 }}>{item.step}</span>
+        <span className="font-serif leading-none select-none" style={{ fontSize: 'clamp(1.4rem, 3.5vw, 2.2rem)', color: 'transparent', WebkitTextStroke: '1.5px rgba(181,162,106,0.25)', lineHeight: 1 }}>{item.step}</span>
       </div>
       <span className="text-[9px] uppercase tracking-[0.2em] font-bold mb-2.5 sm:mb-3 inline-block" style={{ background: 'rgba(181,162,106,0.1)', color: '#b5a26a', padding: '3px 8px', borderRadius: 2, alignSelf: 'flex-start' }}>{item.tag}</span>
-      <h3 className="text-base sm:text-lg lg:text-xl font-serif font-bold mb-2 sm:mb-3 leading-snug text-gray-900">{item.title}</h3>
+      <h3 className="text-sm sm:text-base lg:text-lg font-serif font-bold mb-1.5 sm:mb-2 leading-snug text-gray-900">{item.title}</h3>
       <p className="text-xs sm:text-sm text-gray-500 leading-relaxed flex-1">{item.desc}</p>
-      <div className="flex items-center gap-2 mt-4 sm:mt-6 pt-4 sm:pt-5" style={{ borderTop: '1px solid rgba(181,162,106,0.15)' }}>
+      <div className="flex items-center gap-2 mt-3 sm:mt-4 pt-3 sm:pt-4" style={{ borderTop: '1px solid rgba(181,162,106,0.15)' }}>
         <div style={{ width: 16, height: 1, background: '#b5a26a', opacity: 0.5 }} />
         <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400">{item.detail}</span>
       </div>
@@ -543,12 +693,7 @@ export const Home = () => {
     <div className="overflow-x-hidden">
       <ParticleTrail />
 
-      {/* ══════════════════════════════════════
-          HERO
-          Phone   → text top, CTA below (column)
-          md+     → text left, CTA right (row)
-          All devices → min-h: 100svh (safe viewport)
-      ══════════════════════════════════════ */}
+      {/* HERO */}
       <section
         ref={heroRef}
         className="relative min-h-[100svh] flex items-end
@@ -556,7 +701,6 @@ export const Home = () => {
           px-5 sm:px-8 md:px-14 lg:px-16 xl:px-20 2xl:px-28"
         style={{ perspective: '1400px' }}
       >
-        {/* Video BG */}
         <div className="absolute inset-0 overflow-hidden z-0">
           <video autoPlay muted loop playsInline className="w-full h-full object-cover" style={{ filter: 'brightness(0.42)' }}>
             <source src={heroVideo} type="video/mp4" />
@@ -565,12 +709,10 @@ export const Home = () => {
           <div className="absolute bottom-0 left-0 right-0 h-32" style={{ background: 'linear-gradient(to top, rgba(181,162,106,0.12) 0%, transparent 100%)' }} />
         </div>
 
-        {/* Content row */}
         <motion.div
           style={{ y: springHeroTextY, opacity: heroOpacity, willChange: 'transform' }}
           className="relative z-10 w-full flex flex-col gap-7 md:flex-row md:items-end md:justify-between"
         >
-          {/* Headline */}
           <div className="max-w-[90vw] sm:max-w-sm md:max-w-lg lg:max-w-2xl xl:max-w-3xl 2xl:max-w-4xl">
             <h1 className="
               text-[2.4rem] leading-[1.05]
@@ -594,7 +736,6 @@ export const Home = () => {
             </h1>
           </div>
 
-          {/* CTA button */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 1.0 }} className="flex-shrink-0">
             <motion.div ref={magnetRef} style={{ x: magX, y: magY }} onMouseMove={magMove} onMouseLeave={magLeave}>
               <motion.button
@@ -611,25 +752,18 @@ export const Home = () => {
           </motion.div>
         </motion.div>
 
-        {/* Scroll indicator — hidden on very small phones */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2, duration: 0.8 }} className="absolute bottom-5 sm:bottom-7 left-1/2 -translate-x-1/2 z-10 hidden sm:flex flex-col items-center gap-2">
           <span className="text-white/50 text-[9px] uppercase tracking-[0.3em] font-bold">Scroll</span>
           <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }} style={{ width: 1, height: 28, background: 'linear-gradient(to bottom, rgba(181,162,106,0.8), transparent)' }} />
         </motion.div>
       </section>
 
-      {/* ══════════════════════════════════════
-          OCCASIONS GRID
-          xs  → 2 cols
-          sm  → 3 cols
-          md  → 4 cols
-          lg+ → 5 cols
-      ══════════════════════════════════════ */}
+      {/* OCCASIONS SLIDER */}
       <section
         id="occasions"
         className="
-          py-14 sm:py-20 md:py-24 lg:py-28 xl:py-32
-          px-4 sm:px-8 md:px-14 lg:px-16 xl:px-20 2xl:px-28
+          py-0 sm:py-4 md:py-6 lg:py-8 xl:py-10 2xl:py-12
+          px-0 sm:px-4 md:px-6 lg:px-8 xl:px-10 2xl:px-10
           bg-white overflow-hidden
         "
       >
@@ -641,26 +775,19 @@ export const Home = () => {
                 Gifting for Every Occasion
               </h2>
             </div>
-            <motion.div initial={{ opacity: 0, scale: 0.8 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: false, amount: 0.3 }} transition={{ duration: 0.5, delay: 0.2 }} className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] font-bold text-brand-olive/70 flex-shrink-0">
+            {/* <motion.div initial={{ opacity: 0, scale: 0.8 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: false, amount: 0.3 }} transition={{ duration: 0.5, delay: 0.2 }} className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] font-bold text-brand-olive/70 flex-shrink-0">
               <span className="w-6 sm:w-8 h-px bg-brand-olive/40 inline-block" />
               {occasionData.length} Occasions
-            </motion.div>
+            </motion.div> */}
           </motion.div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-4 lg:gap-5 xl:gap-6" style={{ perspective: '1600px' }}>
-            {occasionData.map((item, i) => (
-              <OccasionCard key={item.title} item={item} index={i} />
-            ))}
-          </div>
+          <OccasionSlider items={occasionData} />
         </div>
       </section>
-
-      {/* ══════════════════════════════════════
-          PROCESS
-          Mobile  → 1 col
-          sm      → 2 col
-          md+     → 3 col
-      ══════════════════════════════════════ */}
+      <div>
+      <OurClients />
+    </div>
+      {/* PROCESS */}
       <section className="bg-brand-beige py-14 sm:py-20 md:py-24 lg:py-28 xl:py-32 px-4 sm:px-8 md:px-14 lg:px-16 xl:px-20 2xl:px-28 overflow-hidden">
         <div className="max-w-[1700px] mx-auto">
           <div className="mb-8 sm:mb-12 lg:mb-16 flex flex-col md:flex-row md:items-end md:justify-between gap-4 sm:gap-6">
@@ -680,7 +807,7 @@ export const Home = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 lg:gap-6 relative z-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 relative z-10">
             {processSteps.map((item, i) => <ProcessStep key={item.step} item={item} index={i} />)}
           </div>
 
@@ -693,13 +820,8 @@ export const Home = () => {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════
-          CURATED EXPERIENCES
-          Mobile  → 1 col
-          md+     → 2 col
-      ══════════════════════════════════════ */}
-      <section className="py-14 sm:py-20 md:py-24 lg:py-28 xl:py-32 px-4 sm:px-8 md:px-14 lg:px-16 xl:px-20 2xl:px-28 bg-white">
-        <div className="max-w-[1700px] mx-auto">
+      {/* CURATED EXPERIENCES */}
+      <section className="bg-brand-beige py-10 sm:py-14 md:py-16 lg:py-20 px-4 sm:px-8 md:px-14 lg:px-16 xl:px-20 2xl:px-28 overflow-hidden">        <div className="max-w-[1700px] mx-auto">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.15 }} transition={{ duration: 0.6 }} className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-8 sm:mb-12 lg:mb-16">
             <div>
               <h2 className="text-2xl sm:text-4xl md:text-5xl font-serif mb-2 sm:mb-4">Curated Experiences</h2>
@@ -716,21 +838,14 @@ export const Home = () => {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════
-          IMPACT NARRATIVE
-          Mobile → stacked (image → quote → text)
-          lg+    → side by side, quote overlaps
-      ══════════════════════════════════════ */}
+      {/* IMPACT NARRATIVE */}
       <section ref={impactRef} className="bg-brand-beige py-14 sm:py-20 md:py-24 lg:py-28 px-4 sm:px-8 md:px-14 lg:px-16 xl:px-20 2xl:px-28 overflow-hidden">
-        <div className="max-w-[1700px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-14 lg:gap-20 items-center">
-
-          {/* Left — circle image + quote card */}
+        <div className="max-w-[1700px] mx-auto grid grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-10 sm:gap-14 lg:gap-20 items-center">
           <motion.div initial={{ opacity: 0, scale: 0.8 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: false, amount: 0.15 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} className="relative">
-            <div className="aspect-square rounded-full overflow-hidden border-[8px] sm:border-[10px] lg:border-[12px] border-white shadow-2xl max-w-[280px] sm:max-w-sm md:max-w-md lg:max-w-full mx-auto lg:mx-0">
-              <motion.img src="https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=2070&auto=format&fit=crop" alt="Artisan weaving" style={{ y: springImpactY, scale: 1.08, willChange: 'transform' }} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <div className="aspect-square rounded-full overflow-hidden border-[6px] sm:border-[8px] lg:border-[10px] border-white shadow-2xl max-w-[220px] sm:max-w-xs md:max-w-sm lg:max-w-md mx-auto lg:mx-0">
+              <motion.img src="https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=2070&auto=format&fit=crop" alt="Artisan weaving" style={{ y: springImpactY, scale: 1.03, willChange: 'transform' }} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             </div>
 
-            {/* Quote — below image on mobile, overlapping on lg */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -739,8 +854,8 @@ export const Home = () => {
               whileHover={{ y: -4, boxShadow: '0 20px 48px rgba(0,0,0,0.13)' }}
               className="
                 mt-5 lg:mt-0
-                lg:absolute lg:-bottom-10 lg:right-0 xl:-right-4
-                bg-white p-5 sm:p-6 md:p-8 rounded-sm shadow-xl
+                lg:absolute lg:-bottom-6 lg:right-0 xl:-right-2
+                bg-white p-4 sm:p-5 md:p-6 rounded-sm shadow-lg
                 max-w-full sm:max-w-sm
               "
               style={{ willChange: 'transform' }}
@@ -755,7 +870,6 @@ export const Home = () => {
             </motion.div>
           </motion.div>
 
-          {/* Right — text content */}
           <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.15 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }} className="lg:pl-8 xl:pl-10 pt-2 lg:pt-12">
             <p className="text-xs uppercase tracking-[0.3em] font-bold text-brand-olive mb-4 sm:mb-6">Our Global Footprint</p>
             <h2 className="text-2xl sm:text-4xl md:text-5xl xl:text-6xl font-serif mb-5 sm:mb-8 leading-tight">
@@ -776,12 +890,8 @@ export const Home = () => {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════
-          IMPACT STATS BAR
-          Mobile → vertical stack, centered
-          sm+    → horizontal row
-      ══════════════════════════════════════ */}
-      <section className="bg-brand-beige py-8 sm:py-10 px-4 sm:px-8 md:px-14 border-y border-gray-200">
+      {/* IMPACT STATS BAR */}
+      <section className="bg-brand-beige py-14 sm:py-14 px-8 sm:px-10 md:px-16 border-y border-gray-200">
         <div className="max-w-[1700px] mx-auto flex flex-col sm:flex-row justify-center sm:justify-between gap-6 sm:gap-8 text-center">
           {[{ label: 'CO₂ Reduced (KG)', value: '1000+' }, { label: 'Sustainable Materials', value: '100%' }, { label: 'Artisan Families', value: '100+' }].map((stat, i) => (
             <motion.div key={stat.label} initial={{ opacity: 0, scale: 0.5 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: false, amount: 0.3 }} transition={{ type: 'spring', stiffness: 200, damping: 12, delay: i * 0.12 }} whileHover={{ scale: 1.07, y: -3 }} className="flex-1 min-w-[120px] sm:min-w-[160px]" style={{ willChange: 'transform' }}>
@@ -792,20 +902,15 @@ export const Home = () => {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════
-          FINAL CTA
-          Mobile  → smaller text, stacked buttons, full-width
-          sm+     → inline buttons
-          2xl     → max-width cap
-      ══════════════════════════════════════ */}
-      <section className="py-12 sm:py-16 md:py-20 lg:py-24 text-center bg-brand-off-white px-4 sm:px-8">
+      {/* FINAL CTA */}
+      <section className="py-8 sm:py-12 md:py-16 lg:py-18 text-center bg-brand-off-white px-0 sm:px-6">
         <div className="max-w-[320px] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl 2xl:max-w-5xl mx-auto">
           <motion.h2
             initial={{ opacity: 0, letterSpacing: '-0.05em', y: 20 }}
             whileInView={{ opacity: 1, letterSpacing: '-0.01em', y: 0 }}
             viewport={{ once: false, amount: 0.3 }}
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="font-serif text-[2rem] sm:text-5xl md:text-6xl lg:text-7xl mb-5 sm:mb-8 leading-tight"
+            className="font-serif text-[1.25rem] sm:text-5xl md:text-6xl lg:text-7xl mb-5 sm:mb-8 leading-tight"
           >
             Ready to make an <br /><span className="italic font-normal">Impression?</span>
           </motion.h2>
@@ -837,3 +942,4 @@ export const Home = () => {
     </div>
   );
 };
+

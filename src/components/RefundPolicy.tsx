@@ -58,7 +58,17 @@ export default function RefundPolicy() {
       <h2>The Step-by-Step Return Process</h2>
       <ol>
         <li>
-          <strong>Initiate Contact:</strong> Email support@ecotwist.in within 7 days with subject
+          <strong>Initiate Contact:</strong> Email <a 
+          href="mailto:support@ecotwist.in"
+          onClick={(e) => {
+            if (!navigator.userAgent.includes("Mobile")) {
+              window.open("https://mail.google.com/mail/?view=cm&to=support@ecotwist.in");
+            }
+          }}
+          className="text-blue-600 underline"
+        >
+          support@ecotwist.in
+        </a> within 7 days with subject
           line "Return Request - Order #[Your Order Number]".
         </li>
         <li>
@@ -86,7 +96,17 @@ export default function RefundPolicy() {
 
       <h2>Order Cancellation</h2>
       <p>
-        You may cancel your order before dispatch by emailing support@ecotwist.in. Orders already
+        You may cancel your order before dispatch by emailing <a 
+          href="mailto:support@ecotwist.in"
+          onClick={(e) => {
+            if (!navigator.userAgent.includes("Mobile")) {
+              window.open("https://mail.google.com/mail/?view=cm&to=support@ecotwist.in");
+            }
+          }}
+          className="text-blue-600 underline"
+        >
+          support@ecotwist.in
+        </a> Orders already
         shipped cannot be cancelled and must follow the return process.
       </p>
 
