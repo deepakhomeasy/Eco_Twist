@@ -22,7 +22,7 @@ const clients: Client[] = [
   { id: 5, name: "Homeasy", logo: Homeasy },
   { id: 6, name: "Bharatx Ventures", logo: bharatx },
   { id: 7, name: "Kynyx", logo: kynyz },
-  { id: 8, name: "EcoTwist", logo: ecotwist },
+  
   { id: 9, name: "Bharatx Infratech", logo: infratech },
 ];
 
@@ -58,10 +58,7 @@ export default function OurClients() {
     className="
       w-auto flex-shrink-0 rounded-3xl p-4
       h-20 md:h-24
-      
-      hover:bg-white
-      
-      
+      hover:bg-white 
       flex items-center justify-center
     "
   >

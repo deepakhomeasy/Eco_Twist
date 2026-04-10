@@ -197,71 +197,76 @@ const LandingImage = ({
 /* ================================================================
    SOLUTION CARD  —  3D tilt + glow + scroll-in
    ================================================================ */
-    const SolutionCard = ({
-      item,i,
-    }: {
-      item: { category: string; title: string; desc: string; img: any; path: string };
-      i: number;
-    }) => {
-      const tilt = useTilt(11);
-      const navigate = useNavigate();
+const SolutionCard = ({
+  item,
+  i,
+}: {
+  item: {
+    category: string;
+    title: string;
+    desc: string;
+    img: any;
+    path: string;
+  };
+  i: number;
+}) => {
+  const tilt = useTilt(8); // subtle tilt
+  const navigate = useNavigate();
 
-      return (
-        <motion.div
-          onClick={() => navigate(item.path)} 
-          initial={{ opacity: 0, y: 80, rotateX: 18, rotateY: i % 2 === 0 ? 18 : -18 }}
-          whileInView={{ opacity: 1, y: 0, rotateX: 0, rotateY: 0 }}
-          viewport={{ once: false, margin: '-60px' }}
-          transition={{
-            delay: i * 0.13,
-            duration: 0.95,
-            type: 'spring',
-            stiffness: 65,
-            damping: 20,
-          }}
-          onMouseMove={tilt.handleMove}
-          onMouseLeave={tilt.handleLeave}
-          style={{ ...tilt.style, transformStyle: 'preserve-3d' }}
-          className="group cursor-pointer relative"
-        >
-          {/* mouse-follow glow */}
-          <div
-            className="absolute inset-0 rounded-sm z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-            style={{
-              background: `radial-gradient(circle at ${tilt.glowPos.x}% ${tilt.glowPos.y}%, rgba(138,154,91,0.18) 0%, transparent 55%)`,
-            }}
-          />
+  return (
+    <motion.div
+      onClick={() => navigate(item.path)}
+      initial={{ opacity: 0, y: 60, scale: 0.95 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once: true, amount: 0.3 }} // Ensures scroll animation works
+      transition={{
+        duration: 0.6,
+        delay: i * 0.1,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+      whileHover={{ y: -8 }}
+      onMouseMove={tilt.handleMove}
+      onMouseLeave={tilt.handleLeave}
+      style={{ ...tilt.style, transformStyle: "preserve-3d" }}
+      className="group cursor-pointer relative w-[220px] sm:w-[230px] md:w-[240px]"
+    >
+      {/* Image */}
+      <div className="relative overflow-hidden rounded-lg shadow-md">
+        <motion.img
+          src={item.img}
+          alt={item.title}
+          className="w-full h-[260px] object-cover"
+          initial={{ scale: 1.1 }}
+          whileInView={{ scale: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+        />
 
-          {/* image */}
-          <div className="aspect-[4/5] overflow-hidden mb-8 rounded-sm relative">
-            <motion.img
-              src={item.img}
-              className="w-full h-full object-cover scale-105 group-hover:scale-100"
-              whileHover={{ scale: 1.08 }}
-              transition={{ duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] }}
-            />
-            <motion.div className="absolute inset-0 bg-gradient-to-t from-brand-dark-olive/65 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <p className="absolute bottom-4 left-4 text-brand-beige text-[10px] uppercase tracking-widest font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75">
-              View Collection →
-            </p>
-          </div>
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
-          <p className="text-[10px] uppercase tracking-widest text-brand-olive font-bold mb-2">
-            {item.category}
+        {/* Category Badge */}
+        <div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest text-brand-dark-olive shadow">
+          {item.category}
+        </div>
+
+        {/* Bottom Text (Static) */}
+        <div className="absolute bottom-0 left-0 w-full p-3 text-white">
+          <h3 className="text-sm font-semibold leading-tight">
+            {item.title}
+          </h3>
+          <p className="text-[11px] opacity-90 line-clamp-2">
+            {item.desc}
           </p>
-          <h3 className="text-3xl font-serif mb-3">{item.title}</h3>
-          <p className="text-gray-500 leading-relaxed mb-4 font-light">{item.desc}</p>
+        </div>
+      </div>
 
-          <motion.span
-            className="text-[10px] uppercase tracking-widest font-bold flex items-center gap-2"
-            whileHover={{ x: 6 }}
-            transition={{ duration: 0.2 }}
-          >
-            Explore Kits <ArrowRight size={12} />
-          </motion.span>
-        </motion.div>
-      );
-    };
+      {/* Explore Link */}
+      <div className="flex items-center gap-1 mt-2 text-[10px] uppercase tracking-widest font-bold text-brand-dark-olive">
+        Explore Kits <ArrowRight size={12} />
+      </div>
+    </motion.div>
+  );
+};
 
 /* ================================================================
    CAPABILITY ROW  —  alternate left/right slide + rotateY
@@ -631,7 +636,7 @@ const cards = occasionData.map((item) => ({
               {/* Process pills */}
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                whileInView={{ opacity: 1, y: 0 }} 
                 viewport={{ once: false }}
                 transition={{ delay: 0.75, duration: 0.6 }}
                 className="flex flex-col gap-3"
@@ -757,9 +762,9 @@ const cards = occasionData.map((item) => ({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: false }}
             transition={{ duration: 0.7 }}
-            className="mb-20 flex flex-col md:flex-row md:items-end justify-between gap-6"
+            className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6"
           >
-            <h2 className="font-serif text-5xl md:text-7xl leading-tight">
+            <h2 className="font-serif text-4xl md:text-6xl leading-tight">
               Solutions{' '}
               <span className="italic font-normal text-brand-olive">Designed</span>
               <br />for Every Team
