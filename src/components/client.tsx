@@ -2,7 +2,7 @@ import React from 'react';
 import logo from '../assests/logo.png';
 import Homeasy from '../assests/homeasy.png';
 import bharatx from '../assests/bhartex.png';
-import ecotwist from '../assests/ecotwist.png';
+import aixperts from '../assests/aixperts.png';
 import infratech from '../assests/bharatx.png';
 import Casters from '../assests/casters.png';
 import kynyz from '../assests/kynyx logo.png';
@@ -22,7 +22,7 @@ const clients: Client[] = [
   { id: 5, name: "Homeasy", logo: Homeasy },
   { id: 6, name: "Bharatx Ventures", logo: bharatx },
   { id: 7, name: "Kynyx", logo: kynyz },
-  
+  { id: 8, name: "Aixperts", logo: aixperts },
   { id: 9, name: "Bharatx Infratech", logo: infratech },
 ];
 
