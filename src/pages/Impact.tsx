@@ -471,16 +471,16 @@ export const Impact = () => {
           ECOTWIST
         </motion.div>
 
-        <div className="max-w-6xl mx-auto px-4 relative">
+        <div className="max-w-7xl mx-auto px-8 relative">
 
           <motion.div
-            className="mb-5"
+            className="mb-10"
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: false }}
             transition={{ duration: 1 }}
           >
-            <span className="uppercase tracking-[0.5em] text-[9px] font-bold text-[#C9A96E]/60  block">Confidential / Internal Methodology</span>
+            <span className="uppercase tracking-[0.5em] text-[9px] font-bold text-[#C9A96E]/60 mb-3 block">Confidential / Internal Methodology</span>
             <h2 className="font-serif text-4xl md:text-6xl">
               The Ethical <span className="italic text-[#C9A96E]">Blueprint</span>
             </h2>
@@ -513,7 +513,7 @@ export const Impact = () => {
                 whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 viewport={{ once: false, amount: 0.2 }}
                 transition={{ duration: 1, delay: i * 0.15, ease: [0.22, 1, 0.36, 1] }}
-                className="group relative grid grid-cols-12 gap-8 py-6 items-center cursor-default"
+                className="group relative grid grid-cols-12 gap-8 py-8 items-center cursor-default"
               >
                 {/* hover bg reveal */}
                 <motion.div
@@ -560,7 +560,7 @@ export const Impact = () => {
 
       {/* ── FOOTER MARK ─────────────────────────────────────────── */}
       <motion.section
-        className="py-10 bg-[#111108] text-center border-t border-[#f0ead6]/10"
+        className="py-20 bg-[#111108] text-center border-t border-[#f0ead6]/10"
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: false }}
