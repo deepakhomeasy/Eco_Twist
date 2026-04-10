@@ -20,7 +20,7 @@ const MagneticCursor: React.FC = () => {
   return (
     <motion.div
       style={{ left: sx, top: sy }}
-      className="fixed z-[9999] w-5 h-5 rounded-full border border-[#C9A96E] pointer-events-none mix-blend-difference hidden md:block"
+      // className="fixed z-[9999] w-5 h-5 rounded-full border border-[#C9A96E] pointer-events-none mix-blend-difference hidden md:block"
     />
   );
 };

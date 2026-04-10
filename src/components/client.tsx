@@ -4,7 +4,7 @@ import Homeasy from '../assests/homeasy.png';
 import bharatx from '../assests/bhartex.png';
 import aixperts from '../assests/aixperts.png';
 import infratech from '../assests/bharatx.png';
-import Casters from '../assests/casters.png';
+import Casters from '../assests/Casters.png';
 import kynyz from '../assests/kynyx logo.png';
 import cehro from '../assests/cehro india logo.png';
 
