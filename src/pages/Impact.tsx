@@ -162,57 +162,75 @@ interface MetricCardProps {
   desc: string;
   index: number;
 }
-
 const MetricCard: React.FC<MetricCardProps> = ({ value, label, desc, index }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [count, setCount] = useState(0);
   const [started, setStarted] = useState(false);
-  const numericVal = parseFloat(value.replace(/[^0-9.]/g, ''));
-  const suffix = value.replace(/[0-9.]/g, '');
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) {
-          setStarted(false);
-          setTimeout(() => setStarted(true), 50);
-        } else {
-          setStarted(false);
-          setCount(0);
-        }
-      },
-      { threshold: 0.5 }
-    );
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
+  const numericVal = parseFloat(value.replace(/[^0-9.]/g, ""));
+  const suffix = value.replace(/[0-9.]/g, "");
 
-  useEffect(() => {
-    if (!started) return;
-    const duration = 1800;
-    const steps = 60;
-    const increment = numericVal / steps;
-    let current = 0;
-    const timer = setInterval(() => {
-      current = Math.min(current + increment, numericVal);
-      setCount(current);
-      if (current >= numericVal) clearInterval(timer);
-    }, duration / steps);
-    return () => clearInterval(timer);
-  }, [started, numericVal]);
+useEffect(() => {
+  const observer = new IntersectionObserver(
+    ([entry]) => {
+      if (entry.isIntersecting) {
+        // Staggered start for each metric
+        setTimeout(() => setStarted(true), index * 300);
+      } else {
+        setStarted(false);
+        setCount(0);
+      }
+    },
+    { threshold: 0.5 }
+  );
 
-  const displayVal = numericVal >= 100 ? Math.round(count) : count.toFixed(0);
+  if (ref.current) observer.observe(ref.current);
+  return () => observer.disconnect();
+}, [index]);
+
+useEffect(() => {
+  if (!started) return;
+
+  let animationFrame: number;
+
+  // Duration based on number size
+  const duration = Math.min(4000, Math.max(1000, numericVal * 2));
+
+  const startTime = performance.now();
+
+  const animate = (currentTime: number) => {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+
+    // Smooth ease-out effect
+    const easedProgress = 1 - Math.pow(1 - progress, 3);
+    setCount(easedProgress * numericVal);
+
+    if (progress < 1) {
+      animationFrame = requestAnimationFrame(animate);
+    } else {
+      setCount(numericVal);
+    }
+  };
+
+  animationFrame = requestAnimationFrame(animate);
+  return () => cancelAnimationFrame(animationFrame);
+}, [started, numericVal]);
+
+  const displayVal = numericVal >= 100
+    ? Math.round(count)
+    : parseFloat(count.toFixed(0));
 
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 80, rotateX: 30, scale: 0.85, filter: 'blur(12px)' }}
-      whileInView={{ opacity: 1, y: 0, rotateX: 0, scale: 1, filter: 'blur(0px)' }}
+      initial={{ opacity: 0, y: 80, rotateX: 30, scale: 0.85, filter: "blur(12px)" }}
+      whileInView={{ opacity: 1, y: 0, rotateX: 0, scale: 1, filter: "blur(0px)" }}
       viewport={{ once: false, amount: 0.4 }}
       transition={{ duration: 1.1, delay: index * 0.18, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -16, scale: 1.04, rotateY: 4 }}
       className="relative border-t border-[#1a1a0e]/10 pt-10 group cursor-default"
-      style={{ transformStyle: 'preserve-3d' }}
+      style={{ transformStyle: "preserve-3d" }}
     >
       {/* glow */}
       <div className="absolute -inset-4 bg-[#C9A96E]/0 group-hover:bg-[#C9A96E]/5 rounded-xl transition-all duration-500 blur-xl" />
@@ -221,20 +239,98 @@ const MetricCard: React.FC<MetricCardProps> = ({ value, label, desc, index }) =>
         {displayVal}
         {suffix}
       </span>
-      <p className="uppercase tracking-[0.3em] text-[9px] font-bold text-[#1a1a0e]/50">{label}</p>
-      <p className="mt-4 text-sm font-light leading-relaxed text-[#555]/80 max-w-xs">{desc}</p>
+
+      <p className="uppercase tracking-[0.3em] text-[9px] font-bold text-[#1a1a0e]/50">
+        {label}
+      </p>
+
+      <p className="mt-4 text-sm font-light leading-relaxed text-[#555]/80 max-w-xs">
+        {desc}
+      </p>
 
       {/* bottom line reveal */}
       <motion.div
         className="absolute bottom-0 left-0 h-px bg-gradient-to-r from-[#C9A96E] to-transparent"
         initial={{ width: 0 }}
-        whileInView={{ width: '60%' }}
+        whileInView={{ width: "60%" }}
         viewport={{ once: false }}
         transition={{ duration: 1.2, delay: index * 0.18 + 0.6 }}
       />
     </motion.div>
   );
 };
+// const MetricCard: React.FC<MetricCardProps> = ({ value, label, desc, index }) => {
+//   const ref = useRef<HTMLDivElement>(null);
+//   const [count, setCount] = useState(0);
+//   const [started, setStarted] = useState(false);
+//   const numericVal = parseFloat(value.replace(/[^0-9.]/g, ''));
+//   const suffix = value.replace(/[0-9.]/g, '');
+
+//   useEffect(() => {
+//     const observer = new IntersectionObserver(
+//       ([e]) => {
+//         if (e.isIntersecting) {
+//           setStarted(false);
+//           setTimeout(() => setStarted(true), 50);
+//         } else {
+//           setStarted(false);
+//           setCount(0);
+//         }
+//       },
+//       { threshold: 0.5 }
+//     );
+//     if (ref.current) observer.observe(ref.current);
+//     return () => observer.disconnect();
+//   }, []);
+
+//   useEffect(() => {
+//     if (!started) return;
+//     const duration = 1800;
+//     const steps = 60;
+//     const increment = numericVal / steps;
+//     let current = 0;
+//     const timer = setInterval(() => {
+//       current = Math.min(current + increment, numericVal);
+//       setCount(current);
+//       if (current >= numericVal) clearInterval(timer);
+//     }, duration / steps);
+//     return () => clearInterval(timer);
+//   }, [started, numericVal]);
+
+//   const displayVal = numericVal >= 100 ? Math.round(count) : count.toFixed(0);
+
+//   return (
+//     <motion.div
+//       ref={ref}
+//       initial={{ opacity: 0, y: 80, rotateX: 30, scale: 0.85, filter: 'blur(12px)' }}
+//       whileInView={{ opacity: 1, y: 0, rotateX: 0, scale: 1, filter: 'blur(0px)' }}
+//       viewport={{ once: false, amount: 0.4 }}
+//       transition={{ duration: 1.1, delay: index * 0.18, ease: [0.22, 1, 0.36, 1] }}
+//       whileHover={{ y: -16, scale: 1.04, rotateY: 4 }}
+//       className="relative border-t border-[#1a1a0e]/10 pt-10 group cursor-default"
+//       style={{ transformStyle: 'preserve-3d' }}
+//     >
+//       {/* glow */}
+//       <div className="absolute -inset-4 bg-[#C9A96E]/0 group-hover:bg-[#C9A96E]/5 rounded-xl transition-all duration-500 blur-xl" />
+
+//       <span className="block font-serif text-[5.5rem] md:text-[7rem] leading-none mb-3 bg-gradient-to-br from-[#1a1a0e] via-[#3d3d1f] to-[#1a1a0e] bg-clip-text text-transparent">
+//         {displayVal}
+//         {suffix}
+//       </span>
+//       <p className="uppercase tracking-[0.3em] text-[9px] font-bold text-[#1a1a0e]/50">{label}</p>
+//       <p className="mt-4 text-sm font-light leading-relaxed text-[#555]/80 max-w-xs">{desc}</p>
+
+//       {/* bottom line reveal */}
+//       <motion.div
+//         className="absolute bottom-0 left-0 h-px bg-gradient-to-r from-[#C9A96E] to-transparent"
+//         initial={{ width: 0 }}
+//         whileInView={{ width: '60%' }}
+//         viewport={{ once: false }}
+//         transition={{ duration: 1.2, delay: index * 0.18 + 0.6 }}
+//       />
+//     </motion.div>
+//   );
+// };
 
 /* ════════════════════════════════════════════════════════════════
    GIFTING HERO CANVAS HOOK
