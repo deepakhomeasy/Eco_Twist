@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   motion,
   useScroll,
@@ -8,11 +8,555 @@ import {
   useInView,
 } from 'motion/react';
 import type { Variants } from 'motion/react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 
-/* ─────────────────────────────────────────────
+/* ═════════════════════════════════════════════════════════
+   BRAND TOKENS — Events & Conferences Theme
+═════════════════════════════════════════════════════════ */
+const BRAND = {
+  deepOlive: '#444f36',
+  sage: '#708156',
+  sageLight: '#b3bea0',
+  gold: '#b5a26a',
+  warmBeige: '#f8f7f5',
+  taupe: '#3d3a34',
+} as const;
+
+const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
+
+/* ═════════════════════════════════════════════════════════
+   EVENTS CANVAS HOOK — Interactive celebration theme
+   • Luxe networking mesh with glowing nodes
+   • Floating gold/sage particles with sparkles
+   • Vertical stage light beams
+   • Click creates celebratory bloom + expanding ripples
+   • Mouse proximity effects
+═════════════════════════════════════════════════════════ */
+function useEventsCanvas(
+  canvasRef: React.RefObject<HTMLCanvasElement>,
+  containerRef: React.RefObject<HTMLElement>
+) {
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return;
+
+    let W = 0, H = 0, animId: number;
+    let mx = -9999, my = -9999;
+    let frame = 0, time = 0;
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    /* Collections */
+    interface Node { x: number; y: number; vx: number; vy: number; ox: number; oy: number; hue: number; r: number; excited: number; }
+    interface Pulse { from: number; to: number; t: number; hue: number; }
+    interface Particle { x: number; y: number; vx: number; vy: number; r: number; hue: number; alpha: number; life: number; spark: boolean; }
+    interface Ripple { x: number; y: number; r: number; maxR: number; life: number; hue: number; delay: number; }
+    interface Bloom { x: number; y: number; life: number; hue: number; scale: number; rot: number; }
+    interface LightBeam { y: number; speed: number; phase: number; }
+
+    const NODES: Node[] = [];
+    const PULSES: Pulse[] = [];
+    const PARTICLES: Particle[] = [];
+    const RIPPLES: Ripple[] = [];
+    const BLOOMS: Bloom[] = [];
+    const LIGHT_BEAMS: LightBeam[] = [
+      { y: 0.2, speed: 0.0004, phase: 0 },
+      { y: 0.5, speed: 0.0007, phase: 2 },
+      { y: 0.8, speed: 0.0005, phase: 4 },
+    ];
+
+    /* Resize with DPR */
+    const resize = () => {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = container.offsetWidth;
+      H = container.offsetHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (NODES.length === 0) initNodes();
+    };
+    resize();
+
+    const ro = new ResizeObserver(resize);
+    ro.observe(container);
+
+    /* Mouse tracking */
+    const getPos = (e: MouseEvent) => {
+      const r = container.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    };
+
+    container.addEventListener('mousemove', (e) => {
+      const p = getPos(e);
+      mx = p.x;
+      my = p.y;
+    }, { passive: true });
+
+    container.addEventListener('mouseleave', () => {
+      mx = -9999;
+      my = -9999;
+    }, { passive: true });
+
+    /* Click handler — celebratory burst */
+    container.addEventListener('click', (e) => {
+      const { x: cx, y: cy } = getPos(e);
+      const hue = Math.random() > 0.5 ? 42 : 78; // gold or sage
+
+      // Expanding ripples
+      for (let i = 0; i < 6; i++) {
+        RIPPLES.push({
+          x: cx, y: cy,
+          r: i * 18,
+          maxR: 180 + i * 45,
+          life: 1,
+          hue,
+          delay: i * 3,
+        });
+      }
+
+      // Celebration bloom
+      BLOOMS.push({
+        x: cx, y: cy,
+        life: 1,
+        hue,
+        scale: 0,
+        rot: Math.random() * Math.PI * 2,
+      });
+
+      // Excite nearby nodes
+      NODES.forEach(n => {
+        const d = Math.hypot(n.x - cx, n.y - cy);
+        if (d < 250) {
+          n.excited = Math.min(1, n.excited + (1 - d / 250) * 0.95);
+        }
+      });
+
+      // Particle burst
+      for (let i = 0; i < 30; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const vel = 1.5 + Math.random() * 3.5;
+        PARTICLES.push({
+          x: cx, y: cy,
+          vx: Math.cos(angle) * vel,
+          vy: Math.sin(angle) * vel - 2.2,
+          r: 2.0 + Math.random() * 3.8,
+          hue: hue === 42 ? 40 : 80,
+          alpha: 1,
+          life: 1,
+          spark: Math.random() > 0.65,
+        });
+      }
+    }, { passive: true });
+
+    /* ══════════════════════════════════════════
+       NETWORKING MESH
+    ══════════════════════════════════════════ */
+    function initNodes() {
+      NODES.length = 0;
+      const count = Math.floor((W * H) / 15000) + 40;
+      for (let i = 0; i < count; i++) {
+        const x = Math.random() * W;
+        const y = Math.random() * H * 0.75;
+        NODES.push({
+          x, y, ox: x, oy: y,
+          vx: (Math.random() - 0.5) * 0.28,
+          vy: (Math.random() - 0.5) * 0.28,
+          hue: Math.random() > 0.55 ? 42 : 78,
+          r: 1.5 + Math.random() * 1.6,
+          excited: 0,
+        });
+      }
+    }
+
+    function spawnPulse(fromIdx: number) {
+      let best = -1, bestD = 9999;
+      for (let j = 0; j < NODES.length; j++) {
+        if (j === fromIdx) continue;
+        const d = Math.hypot(NODES[fromIdx].x - NODES[j].x, NODES[fromIdx].y - NODES[j].y);
+        if (d < 165 && d < bestD) {
+          best = j;
+          bestD = d;
+        }
+      }
+      if (best === -1) return;
+      PULSES.push({
+        from: fromIdx,
+        to: best,
+        t: 0,
+        hue: NODES[fromIdx].hue,
+      });
+    }
+
+    let pulseTimer = 0;
+
+    function updateNetwork() {
+      const LINK_DIST = 145;
+
+      // Update nodes
+      NODES.forEach(n => {
+        n.excited = Math.max(0, n.excited - 0.016);
+
+        // Home force
+        n.vx += (n.ox - n.x) * 0.0004;
+        n.vy += (n.oy - n.y) * 0.0004;
+
+        // Mouse repulsion
+        if (mx > -9999) {
+          const dx = n.x - mx;
+          const dy = n.y - my;
+          const d = Math.hypot(dx, dy);
+          if (d < 170 && d > 0) {
+            const f = (170 - d) / 170;
+            n.vx += (dx / d) * f * f * 0.85;
+            n.vy += (dy / d) * f * f * 0.85;
+          }
+        }
+
+        n.vx *= 0.91;
+        n.vy *= 0.91;
+        n.x += n.vx;
+        n.y += n.vy;
+
+        // Bounds
+        if (n.x < 0) { n.x = 0; n.vx *= -0.5; }
+        if (n.x > W) { n.x = W; n.vx *= -0.5; }
+        if (n.y < 0) { n.y = 0; n.vy *= -0.5; }
+        if (n.y > H) { n.y = H; n.vy *= -0.5; }
+      });
+
+      // Draw connections
+      ctx.save();
+      for (let i = 0; i < NODES.length; i++) {
+        for (let j = i + 1; j < NODES.length; j++) {
+          const a = NODES[i], b = NODES[j];
+          const dx = a.x - b.x, dy = a.y - b.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 > LINK_DIST * LINK_DIST) continue;
+
+          const d = Math.sqrt(d2);
+          const t = 1 - d / LINK_DIST;
+          const exc = (a.excited + b.excited) * 0.5;
+          const alpha = t * 0.18 + exc * 0.28;
+
+          const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+          grad.addColorStop(0, `hsla(${a.hue}, 60%, 75%, ${alpha})`);
+          grad.addColorStop(1, `hsla(${b.hue}, 60%, 75%, ${alpha})`);
+
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = 0.7 + exc * 1.0;
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+
+      // Pulses
+      for (let i = PULSES.length - 1; i >= 0; i--) {
+        const p = PULSES[i];
+        p.t += 0.016;
+        if (p.t >= 1) {
+          NODES[p.to].excited = Math.min(1, NODES[p.to].excited + 0.85);
+          PULSES.splice(i, 1);
+          continue;
+        }
+
+        const a = NODES[p.from], b = NODES[p.to];
+        const x = a.x + (b.x - a.x) * p.t;
+        const y = a.y + (b.y - a.y) * p.t;
+
+        // Glow
+        const gr = ctx.createRadialGradient(x, y, 0, x, y, 5);
+        gr.addColorStop(0, `hsla(${p.hue}, 85%, 90%, 0.95)`);
+        gr.addColorStop(1, 'transparent');
+        ctx.fillStyle = gr;
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Core
+        ctx.fillStyle = `hsl(${p.hue}, 90%, 95%)`;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Nodes
+      NODES.forEach(n => {
+        const size = n.r + n.excited * 3.2;
+        const brightness = 72 + n.excited * 22;
+
+        // Glow
+        const gr = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, size * 3);
+        gr.addColorStop(0, `hsla(${n.hue}, 70%, ${brightness}%, ${0.3 + n.excited * 0.6})`);
+        gr.addColorStop(1, 'transparent');
+        ctx.fillStyle = gr;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, size * 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Core
+        ctx.fillStyle = `hsl(${n.hue}, 65%, ${brightness}%)`;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      pulseTimer++;
+      if (pulseTimer > 13) {
+        pulseTimer = 0;
+        if (NODES.length) spawnPulse(Math.floor(Math.random() * NODES.length));
+      }
+    }
+
+    /* ══════════════════════════════════════════
+       FLOATING PARTICLES & SPARKLES
+    ══════════════════════════════════════════ */
+    function spawnParticle(x?: number, y?: number, burst = false) {
+      PARTICLES.push({
+        x: x ?? Math.random() * W,
+        y: y ?? H + 10,
+        vx: burst ? (Math.random() - 0.5) * 5.5 : (Math.random() - 0.5) * 0.7,
+        vy: burst ? (Math.random() - 0.75) * 4.5 : -0.7 - Math.random() * 1.4,
+        r: burst ? 2.2 + Math.random() * 4.2 : 1.3 + Math.random() * 2.0,
+        hue: Math.random() > 0.5 ? 42 : 78,
+        alpha: burst ? 1 : 0.65,
+        life: burst ? 1 : 0.85,
+        spark: Math.random() > 0.7,
+      });
+    }
+
+    function updateParticles() {
+      for (let i = PARTICLES.length - 1; i >= 0; i--) {
+        const p = PARTICLES[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy -= 0.015;
+        p.life -= 0.011;
+        p.alpha = Math.max(0, p.life);
+
+        if (p.life <= 0 || p.y < -30) {
+          PARTICLES.splice(i, 1);
+          continue;
+        }
+
+        // Boundary wrap
+        if (p.x < -15) p.x = W + 15;
+        if (p.x > W + 15) p.x = -15;
+
+        // Glow
+        const glowSize = p.r * (1.9 + Math.sin(time * 0.2 + i) * 0.7);
+        const gr = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowSize);
+        gr.addColorStop(0, `hsla(${p.hue}, 88%, 92%, ${p.alpha * 0.9})`);
+        gr.addColorStop(1, 'transparent');
+        ctx.fillStyle = gr;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, glowSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Sparkle core
+        if (p.spark) {
+          ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha * 0.95})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r * 0.6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    /* ══════════════════════════════════════════
+       STAGE LIGHT BEAMS
+    ══════════════════════════════════════════ */
+    function drawLightBeams() {
+      LIGHT_BEAMS.forEach(beam => {
+        beam.phase += beam.speed;
+        const yPos = H * (beam.y + Math.sin(beam.phase) * 0.08);
+        const grad = ctx.createLinearGradient(0, yPos - 200, 0, yPos + 240);
+        grad.addColorStop(0, 'transparent');
+        grad.addColorStop(0.38, `hsla(48, 62%, 88%, 0.06)`);
+        grad.addColorStop(0.5, `hsla(48, 68%, 92%, 0.13)`);
+        grad.addColorStop(0.62, `hsla(48, 62%, 88%, 0.06)`);
+        grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, yPos - 200, W, 440);
+      });
+    }
+
+    /* ══════════════════════════════════════════
+       CLICK EFFECTS
+    ══════════════════════════════════════════ */
+    function drawRipplesAndBlooms() {
+      // Ripples
+      for (let i = RIPPLES.length - 1; i >= 0; i--) {
+        const r = RIPPLES[i];
+        if (r.delay > 0) {
+          r.delay--;
+          continue;
+        }
+
+        r.r += (r.maxR - r.r) * 0.068;
+        r.life -= 0.017;
+
+        if (r.life <= 0) {
+          RIPPLES.splice(i, 1);
+          continue;
+        }
+
+        ctx.strokeStyle = `hsla(${r.hue}, 68%, 85%, ${r.life * 0.55})`;
+        ctx.lineWidth = 2.6 * r.life;
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner rotated diamond ripple
+        ctx.save();
+        ctx.translate(r.x, r.y);
+        ctx.rotate(Math.PI / 4 + r.life * 0.6);
+        const dr = r.r * 0.7;
+        ctx.beginPath();
+        ctx.moveTo(0, -dr);
+        ctx.lineTo(dr, 0);
+        ctx.lineTo(0, dr);
+        ctx.lineTo(-dr, 0);
+        ctx.closePath();
+        ctx.strokeStyle = `hsla(${r.hue}, 75%, 88%, ${r.life * 0.28})`;
+        ctx.lineWidth = 1.0 * r.life;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Blooms
+      for (let i = BLOOMS.length - 1; i >= 0; i--) {
+        const b = BLOOMS[i];
+        b.life -= 0.020;
+        b.scale += (2.0 - b.scale) * 0.14;
+        b.rot += 0.012;
+
+        if (b.life <= 0) {
+          BLOOMS.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(b.rot);
+        ctx.globalAlpha = b.life * 0.8;
+
+        // Radial petals
+        for (let p = 0; p < 8; p++) {
+          ctx.rotate(Math.PI / 4);
+          const grad = ctx.createRadialGradient(0, -b.scale * 20, 5, 0, -b.scale * 42, 3);
+          grad.addColorStop(0, `hsla(${b.hue}, 90%, 95%, 0.95)`);
+          grad.addColorStop(1, 'transparent');
+          ctx.fillStyle = grad;
+          ctx.fillRect(-7, -b.scale * 42, 14, b.scale * 46);
+        }
+
+        // Centre glow
+        const cg = ctx.createRadialGradient(0, 0, 0, 0, 0, 15);
+        cg.addColorStop(0, `hsla(${b.hue + 6}, 95%, 98%, 1)`);
+        cg.addColorStop(1, 'transparent');
+        ctx.fillStyle = cg;
+        ctx.beginPath();
+        ctx.arc(0, 0, 15, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }
+
+    /* ══════════════════════════════════════════
+       AMBIENT ORNAMENTATION
+    ══════════════════════════════════════════ */
+    function drawAmbientOrnaments() {
+      const pulse = 0.5 + Math.sin(time * 0.01) * 0.5;
+
+      // Corner accents
+      const corners = [
+        [30, 30, 0],
+        [W - 30, 30, Math.PI / 2],
+        [W - 30, H - 30, Math.PI],
+        [30, H - 30, Math.PI * 1.5],
+      ] as [number, number, number][];
+
+      corners.forEach(([x, y, rot]) => {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rot);
+        ctx.globalAlpha = 0.12 + pulse * 0.08;
+        ctx.strokeStyle = `hsla(42, 65%, 76%, 1)`;
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(0, 32);
+        ctx.lineTo(0, 0);
+        ctx.lineTo(32, 0);
+        ctx.stroke();
+
+        // Diamond at corner
+        const ds = 4;
+        ctx.beginPath();
+        ctx.moveTo(0, -ds);
+        ctx.lineTo(ds, 0);
+        ctx.lineTo(0, ds);
+        ctx.lineTo(-ds, 0);
+        ctx.closePath();
+        ctx.fillStyle = `hsla(42, 75%, 82%, ${0.5 + pulse * 0.4})`;
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    /* ══════════════════════════════════════════
+       MAIN LOOP
+    ══════════════════════════════════════════ */
+    let sparkleTimer = 0;
+
+    function loop() {
+      frame++;
+      time += 0.016;
+      ctx.clearRect(0, 0, W, H);
+
+      drawLightBeams();
+      updateNetwork();
+      updateParticles();
+      drawRipplesAndBlooms();
+      drawAmbientOrnaments();
+
+      // Ambient particles
+      if (frame % 8 === 0) spawnParticle();
+
+      // Mouse proximity sparkles
+      if (mx > -9999) {
+        sparkleTimer++;
+        if (sparkleTimer > 20) {
+          sparkleTimer = 0;
+          spawnParticle(
+            mx + (Math.random() - 0.5) * 70,
+            my + (Math.random() - 0.5) * 70
+          );
+        }
+      }
+
+      animId = requestAnimationFrame(loop);
+    }
+
+    loop();
+
+    return () => {
+      cancelAnimationFrame(animId);
+      ro.disconnect();
+    };
+  }, []);
+}
+
+/* ═════════════════════════════════════════════════════════
    TILT HOOK
-───────────────────────────────────────────── */
+═════════════════════════════════════════════════════════ */
 function useTilt(strength = 10) {
   const ref = useRef<HTMLDivElement>(null);
   const rotateX = useMotionValue(0);
@@ -28,43 +572,44 @@ function useTilt(strength = 10) {
     rotateY.set(dx * strength);
     rotateX.set(-dy * strength);
   }, [strength, rotateX, rotateY]);
-  const onMouseLeave = useCallback(() => { rotateX.set(0); rotateY.set(0); }, [rotateX, rotateY]);
+  const onMouseLeave = useCallback(() => {
+    rotateX.set(0);
+    rotateY.set(0);
+  }, [rotateX, rotateY]);
   return { ref, springX, springY, onMouseMove, onMouseLeave };
 }
 
-/* ─────────────────────────────────────────────
-   VARIANTS  — plain objects, ease as tuple
-───────────────────────────────────────────── */
-const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
-
+/* ═════════════════════════════════════════════════════════
+   VARIANTS
+═════════════════════════════════════════════════════════ */
 const vFadeUp: Variants = {
   hidden: { opacity: 0, y: 44 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.75, ease: EASE } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.75, ease: EASE } },
 };
 
 const vStagger: Variants = {
   hidden: {},
-  show:   { transition: { staggerChildren: 0.13 } },
+  show: { transition: { staggerChildren: 0.13 } },
 };
 
 const vSlideLeft: Variants = {
   hidden: { opacity: 0, x: -48 },
-  show:   { opacity: 1, x: 0, transition: { duration: 0.8, ease: EASE } },
+  show: { opacity: 1, x: 0, transition: { duration: 0.8, ease: EASE } },
 };
 
 const vSlideRight: Variants = {
   hidden: { opacity: 0, x: 48 },
-  show:   { opacity: 1, x: 0, transition: { duration: 0.8, ease: EASE } },
+  show: { opacity: 1, x: 0, transition: { duration: 0.8, ease: EASE } },
 };
 
-/* ─────────────────────────────────────────────
+/* ═════════════════════════════════════════════════════════
    DATA
-───────────────────────────────────────────── */
+═════════════════════════════════════════════════════════ */
 const PRODUCTS = [
-  { name: 'Boreal Glass Carafe',   sub: 'Borosilicate & Bamboo',  img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBmRuIOmg1NAdBCr5X_fi6akCrZ8VpiStdKmzebS8wdjCEVq7-0dSqnqCxXAEe5BkCIhXOJVbtnu1lRQvgQWJjBcQgipqT5c7GQeclbaoSOaPvnE_-9zIbuc0fMkM-F9HYUyvzgVCv_Fy11ON1gcg8Op2ZpoaECFCLuoj4qfRq3wBkWRwi5bxRkK-XCQHl1uMhpDw3Dh7ng89Z-tENfHVPbTtnd546NzkuhINa7Xp7iH5XILl1S9Cu5AXx3YRxLOr9CjXiHza1odKSB' },
-  { name: 'Zenith Bamboo Journal', sub: 'Sustainable FSC Paper',  img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDj6HNMW9cmGK1G0J3PJZrN932c2OgPmuTUl-BoilZ5w6sURvJYMmooZ9x-NKKpVHCL-qFLCdL5i897AUU_DbuXD382DvX_7m2WoL_5Mx9h0q9R8xduaT9ap4-FNjLp86npcGrKeW2-0vE93TSzcqb-ejeB81bxjujhHcUgURVewew7AgQsmfOPMKQzjun5yigGDwt_jHK1akKIsowmEhG3zMwl4NL8zMEzagGIr1K1R1m_oD-ztH8gcccNS267Or-3LLZJO3YFZAHZ' },
-  { name: 'Terra Ceramic Tumbler', sub: 'Artisan Crafted',        img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDR0Ne1Ni-LHMWrUypo_eCLOsciQK1qUTMhwWAlJvdn0xAzW1A5wSuENc3xO5IZ1VzrAkzdetk0ToeDkn1PaoY1i30MT2XR-4HHOKDJL7EaFhOLFoHnVQT7-JjtYD7B5SOvlSqS3aO7w4J3mCmW0qjgwgmj9Zatb8fJbZ5atx8arUZhcygjZAn3T7a1nTrjHUrMzLXTxj2Z-c7wNgej8i-aBFhjI-gH_ABDE6AcK-iRpwQaVsqk_cZev1_hgMZKEi4tE-r9xVIuZMAA' },
-  { name: 'Heritage Canvas Tote',  sub: 'GOTS Certified Cotton',  img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD2o7hZqtmfVnGpB6o5WnLDWPJf9TNRrav1Bep1UsWehN2F1mrqZriCxVk9c9T6FqsvgvXSmosjqz7iCisJKV5qlwlpRpSF54TesGbGKaXdEIkwookM4kMCRAivNDR7F6G_1yuddl1gqa6TF8427ecgwAnkoLBV0hh3i99VC9icoAhvky48rDGD2RirvQfz1layl2y-j5C28ElzP_DElod-sBcfm-u1nz7pehDvqpQwTYrC6fdB8QSSuvMCyW1RP9MJ4OAiKOylaa4t' },
+  { name: 'Boreal Glass Carafe', sub: 'Borosilicate & Bamboo', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBmRuIOmg1NAdBCr5X_fi6akCrZ8VpiStdKmzebS8wdjCEVq7-0dSqnqCxXAEe5BkCIhXOJVbtnu1lRQvgQWJjBcQgipqT5c7GQeclbaoSOaPvnE_-9zIbuc0fMkM-F9HYUyvzgVCv_Fy11ON1gcg8Op2ZpoaECFCLuoj4qfRq3wBkWRwi5bxRkK-XCQHl1uMhpDw3Dh7ng89Z-tENfHVPbTtnd546NzkuhINa7Xp7iH5XILl1S9Cu5AXx3YRxLOr9CjXiHza1odKSB' },
+  { name: 'Zenith Bamboo Journal', sub: 'Sustainable FSC Paper', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDj6HNMW9cmGK1G0J3PJZrN932c2OgPmuTUl-BoilZ5w6sURvJYMmooZ9x-NKKpVHCL-qFLCdL5i897AUU_DbuXD382DvX_7m2WoL_5Mx9h0q9R8xduaT9ap4-FNjLp86npcGrKeW2-0vE93TSzcqb-ejeB81bxjujhHcUgURVewew7AgQsmfOPMKQzjun5yigGDwt_jHK1akKIsowmEhG3zMwl4NL8zMEzagGIr1K1R1m_oD-ztH8gcccNS267Or-3LLZJO3YFZAHZ' },
+  { name: 'Terra Ceramic Tumbler', sub: 'Artisan Crafted', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDR0Ne1Ni-LHMWrUypo_eCLOsciQK1qUTMhwWAlJvdn0xAzW1A5wSuENc3xO5IZ1VzrAkzdetk0ToeDkn1PaoY1i30MT2XR-4HHOKDJL7EaFhOLFoHnVQT7-JjtYD7B5SOvlSqS3aO7w4J3mCmW0qjgwgmj9Zatb8fJbZ5atx8arUZhcygjZAn3T7a1nTrjHUrMzLXTxj2Z-c7wNgej8i-aBFhjI-gH_ABDE6AcK-iRpwQaVsqk_cZev1_hgMZKEi4tE-r9xVIuZMAA' },
+  { name: 'Heritage Canvas Tote', sub: 'GOTS Certified Cotton', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD2o7hZqtmfVnGpB6o5WnLDWPJf9TNRrav1Bep1UsWehN2F1mrqZriCxVk9c9T6FqsvgvXSmosjqz7iCisJKV5qlwlpRpSF54TesGbGKaXdEIkwookM4kMCRAivNDR7F6G_1yuddl1gqa6TF8427ecgwAnkoLBV0hh3i99VC9icoAhvky48rDGD2RirvQfz1layl2y-j5C28ElzP_DElod-sBcfm-u1nz7pehDvqpQwTYrC6fdB8QSSuvMCyW1RP9MJ4OAiKOylaa4t' },
 ];
 
 const BENTO_CARDS = [
@@ -89,23 +634,23 @@ const BENTO_CARDS = [
 ];
 
 const CUSTOM_ITEMS = [
-  { icon: '◈', title: 'Logo Branding',    desc: 'Laser engraving, embossing, or precision screen printing tailored to your identity.' },
+  { icon: '◈', title: 'Logo Branding', desc: 'Laser engraving, embossing, or precision screen printing tailored to your identity.' },
   { icon: '📜', title: 'Personal Messages', desc: 'Individually addressed handwritten notes or custom printed inserts for every guest.' },
   { icon: '🎁', title: 'Packaging Styles', desc: 'Choose from minimalist recycled kraft or premium rigid boxes with fabric lining.' },
-  { icon: '🎨', title: 'Theme Curation',   desc: 'Aligning gift palettes with your conference colors and design aesthetics.' },
+  { icon: '🎨', title: 'Theme Curation', desc: 'Aligning gift palettes with your conference colors and design aesthetics.' },
 ];
- 
+
 const WHY = [
   { icon: '✦', title: 'Premium Quality', desc: 'Meticulously sourced materials and artisan craftsmanship.' },
-  { icon: '◈', title: 'Bulk Ordering',   desc: 'Seamless fulfillment for events of 50 to 500+ attendees.' },
-  { icon: '◎', title: 'Fast Delivery',   desc: 'Pan-India logistics ensuring on-time arrival for your event.' },
+  { icon: '◈', title: 'Bulk Ordering', desc: 'Seamless fulfillment for events of 50 to 500+ attendees.' },
+  { icon: '◎', title: 'Fast Delivery', desc: 'Pan-India logistics ensuring on-time arrival for your event.' },
   { icon: '◐', title: 'Custom Branding', desc: 'End-to-end personalization from product to packaging.' },
   { icon: '◑', title: 'Dedicated Support', desc: 'A personal consultant to guide your gifting strategy.' },
 ];
 
-/* ─────────────────────────────────────────────
-   BENTO CARD
-───────────────────────────────────────────── */
+/* ═════════════════════════════════════════════════════════
+   COMPONENT DEFINITIONS (BentoCard, ProductCard, WhyCard)
+═════════════════════════════════════════════════════════ */
 function BentoCard({ card, index }: { card: typeof BENTO_CARDS[0]; index: number }) {
   const [hovered, setHovered] = useState(false);
   return (
@@ -116,7 +661,7 @@ function BentoCard({ card, index }: { card: typeof BENTO_CARDS[0]; index: number
       transition={{ duration: 0.75, delay: index * 0.1, ease: EASE }}
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
-      className="relative overflow-hidden cursor-pointer"
+      className="relative overflow-hidden cursor-pointer rounded-lg"
       style={{ gridColumn: card.col, gridRow: card.row }}
     >
       <motion.img
@@ -126,10 +671,8 @@ function BentoCard({ card, index }: { card: typeof BENTO_CARDS[0]; index: number
         transition={{ duration: 0.75, ease: EASE }}
         style={{ willChange: 'transform' }}
       />
-      {/* gradient overlay */}
       <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 55%)', opacity: card.large ? 0.85 : 0.6 }} />
 
-      {/* hover reveal overlay for non-large cards */}
       {!card.large && (
         <motion.div
           className="absolute inset-0 flex flex-col items-center justify-center"
@@ -141,23 +684,18 @@ function BentoCard({ card, index }: { card: typeof BENTO_CARDS[0]; index: number
           <motion.button
             whileHover={{ scale: 1.05 }}
             className="px-6 py-2 bg-white text-gray-800 text-[10px] font-bold uppercase tracking-widest border-none cursor-pointer"
-            style={{ fontFamily: 'inherit' }}
           >
             View Collection
           </motion.button>
         </motion.div>
       )}
 
-      {/* bottom label */}
       <div className="absolute bottom-0 left-0 p-6 md:p-9">
         {card.large ? (
           <>
             <h3 className="font-serif text-3xl text-white mb-2">{card.label}</h3>
             <p className="text-white/70 text-sm font-light leading-relaxed mb-5 max-w-sm">{card.desc}</p>
-            <button
-              className="text-white text-[10px] font-bold uppercase tracking-widest border-b border-white pb-0.5 bg-transparent border-l-0 border-r-0 border-t-0 cursor-pointer"
-              style={{ fontFamily: 'inherit' }}
-            >
+            <button className="text-white text-[10px] font-bold uppercase tracking-widest border-b border-white pb-0.5 bg-transparent cursor-pointer">
               View Collection
             </button>
           </>
@@ -175,9 +713,6 @@ function BentoCard({ card, index }: { card: typeof BENTO_CARDS[0]; index: number
   );
 }
 
-/* ─────────────────────────────────────────────
-   PRODUCT CARD
-───────────────────────────────────────────── */
 function ProductCard({ item, index }: { item: typeof PRODUCTS[0]; index: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: false, amount: 0.2 });
@@ -193,7 +728,7 @@ function ProductCard({ item, index }: { item: typeof PRODUCTS[0]; index: number 
       onHoverEnd={() => setHovered(false)}
       className="cursor-pointer group"
     >
-      <div className="relative overflow-hidden mb-4" style={{ aspectRatio: '3/4', background: '#f1f0ed' }}>
+      <div className="relative overflow-hidden mb-4 rounded-lg" style={{ aspectRatio: '3/4', background: '#f1f0ed' }}>
         <motion.img
           src={item.img} alt={item.name}
           className="w-full h-full object-cover"
@@ -201,25 +736,20 @@ function ProductCard({ item, index }: { item: typeof PRODUCTS[0]; index: number 
           transition={{ duration: 0.65, ease: EASE }}
           style={{ willChange: 'transform' }}
         />
-        {/* slide-up inquiry button */}
         <motion.button
           animate={{ y: hovered ? 0 : 60, opacity: hovered ? 1 : 0 }}
           transition={{ duration: 0.35, ease: EASE }}
-          className="absolute bottom-4 left-4 right-4 py-3 text-[10px] font-bold uppercase tracking-widest border-none cursor-pointer"
-          style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)', color: '#3d3a34', fontFamily: 'inherit', letterSpacing: 2 }}
+          className="absolute bottom-4 left-4 right-4 py-3 text-[10px] font-bold uppercase tracking-widest border-none cursor-pointer rounded"
+          style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)', color: '#3d3a34' }}
         >
           Quick Inquiry
         </motion.button>
       </div>
-      <h4 className="font-medium text-gray-800 mb-1" style={{ fontFamily: 'inherit' }}>{item.name}</h4>
-      {/* <p className="text-sm" style={{ color: '#968f80' }}>{item.sub}</p> */}
+      <h4 className="font-medium text-gray-800 mb-1">{item.name}</h4>
     </motion.div>
   );
 }
 
-/* ─────────────────────────────────────────────
-   WHY CARD
-───────────────────────────────────────────── */
 function WhyCard({ item, index }: { item: typeof WHY[0]; index: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: false, amount: 0.3 });
@@ -237,7 +767,7 @@ function WhyCard({ item, index }: { item: typeof WHY[0]; index: number }) {
     >
       <motion.div
         className="flex items-center justify-center mx-auto mb-4 text-2xl rounded-full"
-        style={{ width: 64, height: 64, color: '#645e53', fontFamily: 'inherit' }}
+        style={{ width: 64, height: 64, color: '#645e53' }}
         animate={{ background: hovered ? '#d3d9c5' : '#f1f0ed' }}
         transition={{ duration: 0.3 }}
       >
@@ -249,44 +779,41 @@ function WhyCard({ item, index }: { item: typeof WHY[0]; index: number }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   MAIN PAGE  — no <nav>, no <footer>
-───────────────────────────────────────────── */
+/* ═════════════════════════════════════════════════════════
+   MAIN PAGE
+═════════════════════════════════════════════════════════ */
 export default function EventsConferences() {
-  /* parallax */
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const heroRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
-  const imgY       = useTransform(scrollYProgress, [0, 1], ['0%', '28%']);
-  const textY      = useTransform(scrollYProgress, [0, 1], ['0%', '18%']);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.75], [1, 0]);
-  const springImg  = useSpring(imgY,  { stiffness: 60, damping: 22 });
-  const springTxt  = useSpring(textY, { stiffness: 80, damping: 25 });
 
-  /* about image tilt */
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
+  const imgY = useTransform(scrollYProgress, [0, 1], ['0%', '28%']);
+  const textY = useTransform(scrollYProgress, [0, 1], ['0%', '18%']);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.75], [1, 0]);
+  const springImg = useSpring(imgY, { stiffness: 60, damping: 22 });
+  const springTxt = useSpring(textY, { stiffness: 80, damping: 25 });
+
+  useEventsCanvas(canvasRef, heroRef);
+
   const { ref: aRef, springX: aX, springY: aY, onMouseMove: aMM, onMouseLeave: aML } = useTilt(6);
 
-  /* section in-view refs */
-  const aboutRef  = useRef<HTMLElement>(null);
-  const catRef    = useRef<HTMLElement>(null);
-  const prodRef   = useRef<HTMLElement>(null);
-  const custRef   = useRef<HTMLElement>(null);
-  const ctaRef    = useRef<HTMLElement>(null);
+  const aboutRef = useRef<HTMLElement>(null);
+  const catRef = useRef<HTMLElement>(null);
+  const prodRef = useRef<HTMLElement>(null);
+  const custRef = useRef<HTMLElement>(null);
+  const ctaRef = useRef<HTMLElement>(null);
 
   const aboutInView = useInView(aboutRef, { once: false, amount: 0.2 });
-  const catInView   = useInView(catRef,   { once: false, amount: 0.15 });
-  const prodInView  = useInView(prodRef,  { once: false, amount: 0.15 });
-  const custInView  = useInView(custRef,  { once: false, amount: 0.15 });
-  const ctaInView   = useInView(ctaRef,   { once: false, amount: 0.3 });
+  const catInView = useInView(catRef, { once: false, amount: 0.15 });
+  const prodInView = useInView(prodRef, { once: false, amount: 0.15 });
+  const custInView = useInView(custRef, { once: false, amount: 0.15 });
+  const ctaInView = useInView(ctaRef, { once: false, amount: 0.3 });
 
   return (
     <div className="overflow-x-hidden" style={{ background: '#f8f7f5', fontFamily: 'inherit' }}>
 
-      {/* ── HERO ───────────────────────────────── */}
-      <section
-        ref={heroRef}
-        className="relative flex items-center overflow-hidden"
-        style={{ minHeight: '100vh', perspective: '1400px' }}
-      >
+      {/* ══ HERO with CANVAS ══ */}
+      <section ref={heroRef} className="relative flex items-center overflow-hidden" style={{ minHeight: '100vh', perspective: '1400px' }}>
         <motion.div style={{ y: springImg, willChange: 'transform' }} className="absolute inset-0">
           <img
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuBovXd8GTgExtTT-ykDXV6oujbJeZgvTJ0kpuanb6pJbg57kZmrovGQIdCPXy_eHVspOeoJHLTwCXkvXqEvlJ0DByvsEmmOR0r6HlPU50zZLrh3XJosz1uh2adkawmLgYrZt7G2zcGo9Q6vm3GvtH-psOTCrzCceh6HgkqEz3Ry2QJ_JyEksF75ZlXh70IVhiafb2G1XCPDtdLlhjpAtbbS0Ix2ap-R5yA3IsyZprV-2H8YcQWLnJBAXtiZ9KTm5A51EsdJtQlWlc5X"
@@ -298,10 +825,10 @@ export default function EventsConferences() {
           <div className="absolute bottom-0 left-0 right-0 h-32" style={{ background: 'linear-gradient(to top,rgba(68,79,54,0.15) 0%,transparent 100%)' }} />
         </motion.div>
 
-        <motion.div
-          style={{ y: springTxt, opacity: heroOpacity, willChange: 'transform' }}
-          className="absolute bottom-20 left-8 md:left-20 z-10 max-w-3xl px-4"
-        >
+        {/* Canvas overlay */}
+        <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'all' }} />
+
+        <motion.div style={{ y: springTxt, opacity: heroOpacity, willChange: 'transform' }} className="absolute bottom-20 left-8 md:left-20 z-10 max-w-3xl px-4">
           <motion.p
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -353,8 +880,8 @@ export default function EventsConferences() {
               whileHover={{ scale: 1.05, y: -2, boxShadow: '0 12px 32px rgba(68,79,54,0.4)' }}
               whileTap={{ scale: 0.96 }}
               transition={{ type: 'spring', stiffness: 300, damping: 18 }}
-              className="text-white font-bold uppercase tracking-widest text-xs px-9 py-4"
-              style={{ background: '#444f36', border: 'none', cursor: 'pointer', fontFamily: 'inherit', letterSpacing: 2 }}
+              className="text-white font-bold uppercase tracking-widest text-xs px-9 py-4 rounded-lg"
+              style={{ background: '#444f36', border: 'none', cursor: 'pointer' }}
             >
               Explore Gifts
             </motion.button>
@@ -363,15 +890,15 @@ export default function EventsConferences() {
               whileTap={{ scale: 0.96 }}
               transition={{ type: 'spring', stiffness: 300, damping: 18 }}
               onClick={() => window.location.href = '/contact'}
-              className="text-white font-bold uppercase tracking-widest text-xs px-9 py-4 backdrop-blur-sm"
-              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.3)', cursor: 'pointer', fontFamily: 'inherit', letterSpacing: 2 }}
+              className="text-white font-bold uppercase tracking-widest text-xs px-9 py-4 backdrop-blur-sm rounded-lg"
+              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.3)', cursor: 'pointer' }}
             >
               Request Quote
             </motion.button>
           </motion.div>
         </motion.div>
 
-        {/* scroll cue */}
+        {/* Scroll indicator */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -387,11 +914,12 @@ export default function EventsConferences() {
         </motion.div>
       </section>
 
-      {/* ── ABOUT ──────────────────────────────── */}
+      {/* ══ REST OF SECTIONS (About, Bento, Products, Customization, Why, Trust, CTA) ══ */}
+      {/* ... (same as your original code) ... */}
+
+      {/* ABOUT */}
       <section ref={aboutRef} className="py-32 px-8 md:px-20 lg:px-32 bg-white overflow-hidden">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
-
-          {/* copy */}
           <motion.div variants={vStagger} initial="hidden" animate={aboutInView ? 'show' : 'hidden'}>
             <motion.div variants={vFadeUp}>
               <motion.div
@@ -413,7 +941,6 @@ export default function EventsConferences() {
             <motion.div variants={vFadeUp} style={{ width: 80, height: 1, background: '#d1cdc5' }} />
           </motion.div>
 
-          {/* tilt image with offset border */}
           <motion.div
             initial={{ opacity: 0, scale: 0.85 }}
             animate={aboutInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.85 }}
@@ -426,7 +953,6 @@ export default function EventsConferences() {
               onMouseLeave={aML}
               style={{ rotateX: aX, rotateY: aY, transformStyle: 'preserve-3d', willChange: 'transform', position: 'relative' }}
             >
-              {/* offset decorative border */}
               <motion.div
                 className="absolute -inset-1 border border-gray-300"
                 style={{ transform: 'translate(16px,16px)', zIndex: 0, transition: 'transform 0.5s ease' }}
@@ -435,7 +961,7 @@ export default function EventsConferences() {
               <img
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwIX5PTxZmL6ljd-KY1zM19-KhVOJdkK5p3kGRVOixP-r2FluyVfNmy0NVcJB2D422BIgUtiRYm-fbeurjmXrufEFGNf91h3dlo-19MCBaPxocg3mhlzXr90I9qBaacwvVPBWiCnALbbq_8sDdol5XhsSUnaxCVFuH1JJpdRby_MPyR6dk7vBuJ2gPArqgsnBO4-vaCR_EUN-za8jXx2ZhP_xef0ZkOZ-xgVSopwlE2utcRGbA8O-XggqwAym3-wo24VSkiWFS_6Wz"
                 alt="About"
-                className="relative w-full shadow-2xl"
+                className="relative w-full shadow-2xl rounded-lg"
                 style={{ aspectRatio: '4/5', objectFit: 'cover', zIndex: 1 }}
               />
             </motion.div>
@@ -443,7 +969,7 @@ export default function EventsConferences() {
         </div>
       </section>
 
-      {/* ── BENTO GRID ─────────────────────────── */}
+      {/* BENTO GRID */}
       <section ref={catRef} className="py-32 px-8 md:px-20 lg:px-32 overflow-hidden" style={{ background: '#f1f0ed' }}>
         <div className="max-w-7xl mx-auto">
           <motion.div
@@ -469,7 +995,7 @@ export default function EventsConferences() {
         </div>
       </section>
 
-      {/* ── PRODUCTS ───────────────────────────── */}
+      {/* PRODUCTS */}
       <section ref={prodRef} className="py-32 px-8 md:px-20 lg:px-32 bg-white">
         <div className="max-w-7xl mx-auto">
           <motion.div
@@ -497,11 +1023,9 @@ export default function EventsConferences() {
         </div>
       </section>
 
-      {/* ── CUSTOMIZATION ──────────────────────── */}
+      {/* CUSTOMIZATION */}
       <section ref={custRef} className="py-32 px-8 md:px-20 lg:px-32 overflow-hidden" style={{ background: '#444f36' }}>
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
-
-          {/* image */}
           <motion.div
             variants={vSlideLeft}
             initial="hidden"
@@ -518,7 +1042,6 @@ export default function EventsConferences() {
             />
           </motion.div>
 
-          {/* copy */}
           <motion.div
             variants={vSlideRight}
             initial="hidden"
@@ -545,7 +1068,7 @@ export default function EventsConferences() {
         </div>
       </section>
 
-      {/* ── WHY ECOTWIST ───────────────────────── */}
+      {/* WHY ECOTWIST */}
       <section className="py-32 px-8 md:px-20 lg:px-32 bg-white">
         <div className="max-w-7xl mx-auto">
           <motion.div
@@ -564,7 +1087,7 @@ export default function EventsConferences() {
         </div>
       </section>
 
-      {/* ── TRUST ──────────────────────────────── */}
+      {/* TRUST */}
       <section className="py-12 px-8 border-y border-gray-200">
         <div className="max-w-7xl mx-auto">
           <motion.p
@@ -585,14 +1108,14 @@ export default function EventsConferences() {
             className="flex flex-wrap justify-center gap-16 grayscale cursor-pointer"
             style={{ transition: 'opacity 0.5s, filter 0.5s' }}
           >
-            {['Aether','Solace','Noir','Lumina','Vantage'].map(b => (
+            {['Aether', 'Solace', 'Noir', 'Lumina', 'Vantage'].map(b => (
               <span key={b} className="font-serif text-xl font-bold" style={{ color: '#4d4941', letterSpacing: -0.5 }}>{b}</span>
             ))}
           </motion.div>
         </div>
       </section>
 
-      {/* ── FINAL CTA ──────────────────────────── */}
+      {/* FINAL CTA */}
       <section ref={ctaRef} className="py-10 px-8 text-center" style={{ background: '#f1f0ed' }}>
         <div className="max-w-3xl mx-auto">
           <motion.h2
@@ -602,7 +1125,7 @@ export default function EventsConferences() {
             className="font-serif text-5xl md:text-6xl leading-tight mb-6"
             style={{ color: '#3d3a34' }}
           >
-            Ready to create the perfect 
+            Ready to create the perfect
             <span className="italic font-normal"> Events & Conferences</span>
             gift experience?
           </motion.h2>
@@ -628,18 +1151,18 @@ export default function EventsConferences() {
               onClick={() => window.location.href = '/configurator'}
               whileTap={{ scale: 0.96 }}
               transition={{ type: 'spring', stiffness: 300, damping: 18 }}
-              className="text-white font-bold uppercase tracking-[0.2em] text-xs px-14 py-6 shadow-xl"
-              style={{ background: '#444f36', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              className="text-white font-bold uppercase tracking-[0.2em] text-xs px-14 py-6 shadow-xl rounded-lg"
+              style={{ background: '#444f36', border: 'none', cursor: 'pointer' }}
             >
               Get Started
             </motion.button>
-          
+
             <motion.button
               whileHover={{ y: -2 }}
               transition={{ type: 'spring', stiffness: 400, damping: 20 }}
               onClick={() => window.location.href = '/contact'}
               className="font-bold uppercase tracking-[0.2em] text-xs pb-1 border-b-2 transition-colors"
-              style={{ background: 'transparent', border: 'none', borderBottom: '2px solid rgba(61,58,52,0.2)', cursor: 'pointer', fontFamily: 'inherit', color: '#3d3a34' }}
+              style={{ background: 'transparent', border: 'none', borderBottom: '2px solid rgba(61,58,52,0.2)', cursor: 'pointer', color: '#3d3a34' }}
               onMouseEnter={e => (e.currentTarget.style.borderBottomColor = '#708156')}
               onMouseLeave={e => (e.currentTarget.style.borderBottomColor = 'rgba(61,58,52,0.2)')}
             >
