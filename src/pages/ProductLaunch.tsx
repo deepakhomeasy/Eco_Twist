@@ -105,7 +105,7 @@ const LaunchCanvas: React.FC = () => {
 
   return {
     x: rnd(W * 0.2, W * 0.8),
-    y: H + 20,
+    y: H + 20,  
     vx: Math.cos(angle) * rnd(1, 3),
     vy: Math.sin(angle) * rnd(1, 3),
     size: rnd(7, 12),
