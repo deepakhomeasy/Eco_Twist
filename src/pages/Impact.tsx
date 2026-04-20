@@ -273,8 +273,13 @@ const useGiftingCanvas = (sectionRef: React.RefObject<HTMLElement | null>) => {
       my = e.clientY - r.top;
     };
     const onLeave = () => { mx = -9999; my = -9999; };
+    // Click ke baad 400ms mein reset — particles wapas normal ho jaate hain
+    const onClick = () => {
+      setTimeout(() => { mx = -9999; my = -9999; }, 400);
+    };
     hero.addEventListener('mousemove', onMove);
     hero.addEventListener('mouseleave', onLeave);
+    hero.addEventListener('click', onClick);
 
     const REPULSE_RADIUS = 180;
     const REPULSE_FORCE = 1.8;
@@ -518,6 +523,7 @@ const useGiftingCanvas = (sectionRef: React.RefObject<HTMLElement | null>) => {
       window.removeEventListener('resize', resize);
       hero.removeEventListener('mousemove', onMove);
       hero.removeEventListener('mouseleave', onLeave);
+      hero.removeEventListener('click', onClick);
       canvas.remove();
     };
   }, [sectionRef]);
