@@ -1259,17 +1259,40 @@ export default function EventsConferences() {
       </section>
 
       {/* ══ BENTO GRID ══ */}
-      <section ref={catRef} className="py-32 px-8 md:px-20 lg:px-32 overflow-hidden" style={{ background: '#f1f0ed' }}>
-        <div className="max-w-7xl mx-auto">
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={catInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }} transition={{ duration: 0.6 }} className="text-center mb-14">
-            <h2 className="text-4xl font-serif mb-4" style={{ color: '#3d3a34' }}>Explore Our Collections</h2>
-            <p className="font-light max-w-lg mx-auto text-sm" style={{ color: '#968f80' }}>Tailored solutions for every touchpoint of your corporate event journey.</p>
-          </motion.div>
-          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gridTemplateRows: '350px 350px' }}>
-            {BENTO_CARDS.map((card, i) => <BentoCard key={card.key} card={card} index={i} />)}
-          </div>
-        </div>
-      </section>
+<section
+  ref={catRef}
+  className="py-20 sm:py-24 md:py-32 px-4 sm:px-8 md:px-20 lg:px-32 overflow-hidden"
+  style={{ background: '#f1f0ed' }}
+>
+  <div className="max-w-7xl mx-auto">
+
+    {/* HEADER */}
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={catInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+      transition={{ duration: 0.6 }}
+      className="text-center mb-10 sm:mb-14"
+    >
+      <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif mb-4" style={{ color: '#3d3a34' }}>
+        Explore Our Collections
+      </h2>
+
+      <p className="font-light max-w-lg mx-auto text-xs sm:text-sm" style={{ color: '#968f80' }}>
+        Tailored solutions for every touchpoint of your corporate event journey.
+      </p>
+    </motion.div>
+
+    {/* GRID */}
+    <div
+      className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+    >
+      {BENTO_CARDS.map((card, i) => (
+        <BentoCard key={card.key} card={card} index={i} />
+      ))}
+    </div>
+
+  </div>
+</section>
 
       {/* ══ PRODUCTS ══ */}
       <section ref={prodRef} className="py-32 px-8 md:px-20 lg:px-32 bg-white">

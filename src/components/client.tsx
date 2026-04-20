@@ -27,18 +27,19 @@ const clients: Client[] = [
 ];
 
 export default function OurClients() {
-  
+
   const duplicatedClients = [...clients, ...clients, ...clients];
 
   return (
-    <section className="w-full bg-gradient-to-b from-white to-gray-50  py-2 sm:py-4 md:py-8 overflow-hidden">
+    <section className="w-full bg-gradient-to-b from-white to-gray-50 py-4 sm:py-8 md:py-8 overflow-hidden">
 
-      <div className="max-w-full mx-auto flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-0 pl-20 sm:pl-20 pr-0">
+      {/* ✅ FIXED: mobile padding only */}
+      <div className="max-w-full mx-auto flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-0 pl-4 sm:pl-20 pr-0">
 
         {/* LEFT TITLE */}
-        <div className="shrink-0 w-full sm:w-auto flex items-center justify-between sm:block sm:pr-6 md:pr-10 sm:mr-6 md:mr-10 sm:border-r border-gray-200">
+        <div className="shrink-0 w-full sm:w-auto flex items-center justify-center sm:justify-between sm:block sm:pr-6 md:pr-10 sm:mr-6 md:mr-10 sm:border-r border-gray-200">
           <h2 className="text-xs sm:text-sm md:text-lg font-semibold tracking-[0.2em] text-gray-800 uppercase whitespace-nowrap">
-           Our Clients
+            Our Clients
           </h2>
         </div>
 
@@ -50,32 +51,33 @@ export default function OurClients() {
           <div className="absolute right-0 top-0 h-full w-10 sm:w-16 md:w-24 z-10 pointer-events-none bg-gradient-to-l from-white to-transparent" />
 
           {/* TRACK */}
-          <div className="flex w-max items-center gap-5 sm:gap-10 md:gap-15 lg:gap-10 animate-marquee hover:[animation-play-state:paused] will-change-transform">
+          <div className="flex w-max items-center gap-4 sm:gap-10 md:gap-15 lg:gap-10 animate-marquee hover:[animation-play-state:paused] will-change-transform">
 
             {duplicatedClients.map((client, index) => (
-  <div
-    key={`${client.id}-${index}`}
-    className="
-      w-auto flex-shrink-0 rounded-3xl p-4
-      h-20 md:h-24
-      hover:bg-white 
-      flex items-center justify-center
-    "
-  >
-    <img
-      src={client.logo}
-      alt={client.name}
-      className="
-        h-16 md:h-20
-        object-contain
-        mx-auto
-        transition duration-300
-        hover:scale-110
-        drop-shadow-[0_4px_10px_rgba(0,0,0,0.15)]
-      "
-    />
-  </div>
-))}
+              <div
+                key={`${client.id}-${index}`}
+                className="
+                  w-auto flex-shrink-0 rounded-3xl 
+                  p-3 sm:p-4
+                  h-16 sm:h-20 md:h-24
+                  hover:bg-white 
+                  flex items-center justify-center
+                "
+              >
+                <img
+                  src={client.logo}
+                  alt={client.name}
+                  className="
+                    h-10 sm:h-14 md:h-20
+                    object-contain
+                    mx-auto
+                    transition duration-300
+                    hover:scale-110
+                    drop-shadow-[0_4px_10px_rgba(0,0,0,0.15)]
+                  "
+                />
+              </div>
+            ))}
 
           </div>
         </div>
@@ -98,9 +100,10 @@ export default function OurClients() {
           }
         }
 
+        /* ✅ FIXED: mobile smoother */
         @media (max-width: 640px) {
           .animate-marquee {
-            animation: marquee 18s linear infinite;
+            animation: marquee 22s linear infinite;
           }
         }
       `}</style>

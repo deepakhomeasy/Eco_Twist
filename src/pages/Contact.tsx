@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react';
 
 /* ── HOOKS (identical to Home) ── */
 function useTilt(strength = 12) {
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement | null>(null);
   const rotateX = useMotionValue(0);
   const rotateY = useMotionValue(0);
   const glareX = useMotionValue(50);
@@ -96,7 +96,21 @@ function AnimatedCounter({ value }) {
 }
 
 /* ── CRASH-LAND IMAGE CARD (BundleCard warp system from Home) ── */
-function LandingImageCard({ src, label, tag, accent, fromLeft = true }) {
+type LandingImageCardProps = {
+  src: string;
+  label: string;
+  tag: string;
+  accent: string;
+  fromLeft?: boolean;
+};
+
+function LandingImageCard({
+  src,
+  label,
+  tag,
+  accent,
+  fromLeft = true
+}: LandingImageCardProps)  {
   const cardRef = useRef(null);
   const isInView = useInView(cardRef, { once: false, amount: 0.25 });
   const [phase, setPhase] = useState('hidden');
@@ -195,8 +209,23 @@ function LandingImageCard({ src, label, tag, accent, fromLeft = true }) {
 
 /* ── FORM FIELD — floating label + animated underline ── */
 /** @param {{ label: string, id: string, type?: string, placeholder?: string, children?: any, rows?: number }} props */
-function FormField({ label, id, type = 'text', placeholder = '', children = null, rows = null }) {
-  const [focused, setFocused] = useState(false);
+type FormFieldProps = {
+  label: string;
+  id: string;
+  type?: string;
+  placeholder?: string;
+  children?: React.ReactNode;
+  rows?: number | null;
+};
+
+function FormField({
+  label,
+  id,
+  type = 'text',
+  placeholder = '',
+  children = null,
+  rows = null
+}: FormFieldProps) {  const [focused, setFocused] = useState(false);
   const [filled, setFilled] = useState(false);
   const inputRef = useRef(null);
   const active = focused || filled;
@@ -275,121 +304,112 @@ export const Contact = () => {
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
 
           {/* ════ LEFT COLUMN ════ */}
-          <div className="lg:col-span-5 z-10">
+<div className="lg:col-span-5 z-10">
 
-            {/* Label — "Concierge Service" style */}
-            <motion.span
-              initial={{ opacity: 0, x: -30, letterSpacing: '0.05em' }}
-              animate={{ opacity: 1, x: 0, letterSpacing: '0.3em' }}
-              transition={{ duration: 0.8, delay: 0.1 }}
-              className="text-brand-olive font-medium tracking-[0.3em] uppercase text-xs mb-6 block"
-            >Get In Touch</motion.span>
+  {/* LABEL */}
+  <motion.span
+    initial={{ opacity: 0, x: -30 }}
+    animate={{ opacity: 1, x: 0 }}
+    transition={{ duration: 0.6 }}
+    className="text-brand-olive font-medium tracking-[0.3em] uppercase text-xs mb-4 block"
+  >
+    Get In Touch
+  </motion.span>
 
-            {/* 3D word-flip title — same as Hero h1 */}
-            <h2 className="text-6xl md:text-7xl leading-[1.1] mb-8 font-serif">
-              <div className="flex flex-wrap gap-x-4">
-                {['Start', 'the'].map((word, i) => (
-                  <motion.span key={word}
-                    initial={{ rotateX: -90, opacity: 0, y: 40 }}
-                    animate={{ rotateX: 0, opacity: 1, y: 0 }}
-                    transition={{ duration: 0.7, delay: 0.2 + i * 0.15, ease: [0.22, 1, 0.36, 1] }}
-                    style={{ display: 'inline-block', transformOrigin: 'bottom center', transformStyle: 'preserve-3d' }}
-                  >{word}</motion.span>
-                ))}
-              </div>
-              <div className="flex flex-wrap gap-x-4 italic font-normal">
-                <motion.span
-                  initial={{ rotateX: -90, opacity: 0, y: 40 }}
-                  animate={{ rotateX: 0, opacity: 1, y: 0 }}
-                  transition={{ duration: 0.7, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  style={{ display: 'inline-block', transformOrigin: 'bottom center', transformStyle: 'preserve-3d' }}
-                >Conversation.</motion.span>
-              </div>
-            </h2>
+  {/* HEADING */}
+  <h2 className="text-5xl md:text-7xl leading-[1.1] mb-6 font-serif">
+    <div className="flex flex-wrap gap-x-4">
+      {['Start', 'the'].map((word, i) => (
+        <motion.span key={word}>{word}</motion.span>
+      ))}
+    </div>
+    <div className="flex flex-wrap gap-x-4 italic font-normal">
+      <motion.span>Conversation.</motion.span>
+    </div>
+  </h2>
 
-            <motion.p
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.85 }}
-              className="max-w-md text-lg text-gray-600 leading-relaxed mb-12"
-            >Partner with our design experts to create meaningful, sustainable brand experiences that leave a lasting impression.</motion.p>
+  {/* DESCRIPTION */}
+  <motion.p
+    className="max-w-md text-lg text-gray-600 leading-relaxed mb-8"
+  >
+    Partner with our design experts to create meaningful, sustainable brand experiences that leave a lasting impression.
+  </motion.p>
 
-            {/* Contact info — staggered x-slide */}
-            <div className="space-y-8 mb-14">
-              {[
-                { tag: 'Email Us', value: 'hello@ecotwist.in', href: 'mailto:hello@ecotwist.in', icon: '✉' },
-                { tag: 'Direct Inquiry', value: '+91 WhatsApp Contact', href: '#', icon: '◎' },
-                { tag: 'The Studio', value: 'Studio 22, Sector 18, Noida UP', href: '#', icon: '◈' },
-              ].map((item, i) => (
-                <motion.a key={item.tag} href={item.href}
-                  initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.7, delay: 0.5 + i * 0.14, ease: [0.22, 1, 0.36, 1] }}
-                  whileHover={{ x: 6 }} className="flex items-start gap-5 group cursor-pointer"
-                >
-                  <motion.div
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg flex-shrink-0 mt-1"
-                    style={{ backgroundColor: '#5c7a3e' }}
-                    whileHover={{ boxShadow: '0 12px 32px rgba(92,122,62,0.35)', scale: 1.1 }}
-                    whileInView={{ boxShadow: ['0 4px 16px rgba(92,122,62,0.4)', '0 4px 8px rgba(0,0,0,0.05)'] }}
-                    viewport={{ once: false }}
-                    transition={{ duration: 0.8, delay: i * 0.14 + 0.4 }}
-                  >{item.icon}</motion.div>
-                  <div>
-                    <motion.span
-                      initial={{ opacity: 0, letterSpacing: '0.1em' }}
-                      animate={{ opacity: 1, letterSpacing: '0.22em' }}
-                      transition={{ duration: 0.5, delay: 0.6 + i * 0.14 }}
-                      className="text-[9px] uppercase font-bold text-brand-olive mb-1 block"
-                    >{item.tag}</motion.span>
-                    <p className="font-serif text-xl font-light group-hover:italic transition-all">{item.value}</p>
-                  </div>
-                </motion.a>
-              ))}
-            </div>
+  {/* CONTACT INFO */}
+  <div className="space-y-5 mb-10">
+    {[
+      { tag: 'Email Us', value: 'hello@ecotwist.in', icon: '✉' },
+      { tag: 'Direct Inquiry', value: '+91 WhatsApp Contact', icon: '◎' },
+      { tag: 'The Studio', value: 'Studio 22, Sector 18, Noida UP', icon: '◈' },
+    ].map((item, i) => (
+      <motion.a
+        key={item.tag}
+        href="#"
+        className="flex items-start gap-4 group cursor-pointer"
+      >
+        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm bg-[#5c7a3e]">
+          {item.icon}
+        </div>
+        <div>
+          <span className="text-[9px] uppercase font-bold text-brand-olive mb-1 block">
+            {item.tag}
+          </span>
+          <p className="font-serif text-lg">{item.value}</p>
+        </div>
+      </motion.a>
+    ))}
+  </div>
 
-            {/* Stats — same spring scale-in as Home Impact Stats */}
-            <div className="py-8 border-y border-gray-200 grid grid-cols-3 gap-4 mb-14">
-              {[
-                { label: 'Happy Clients', value: '500+' },
-                { label: 'Gifts Delivered', value: '5K+' },
-                { label: 'Satisfaction', value: '98%' },
-              ].map((stat, i) => (
-                <motion.div key={stat.label}
-                  initial={{ opacity: 0, scale: 0.5 }} whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: false, amount: 0.3 }}
-                  transition={{ type: 'spring', stiffness: 200, damping: 12, delay: i * 0.12 }}
-                  whileHover={{ scale: 1.07, y: -3 }} style={{ willChange: 'transform' }}
-                >
-                  <h4 className="text-2xl font-bold font-serif text-brand-olive"><AnimatedCounter value={stat.value} /></h4>
-                  <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold mt-1">{stat.label}</p>
-                </motion.div>
-              ))}
-            </div>
+  {/* STATS */}
+  <div className="py-5 border-y border-gray-200 grid grid-cols-3 gap-3 mb-10">
+    {[
+      { label: 'Happy Clients', value: '500+' },
+      { label: 'Gifts Delivered', value: '5K+' },
+      { label: 'Satisfaction', value: '98%' },
+    ].map((stat) => (
+      <motion.div key={stat.label}>
+        <h4 className="text-xl font-bold font-serif text-brand-olive">
+          {stat.value}
+        </h4>
+        <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold mt-1">
+          {stat.label}
+        </p>
+      </motion.div>
+    ))}
+  </div>
 
-            {/* Crash-land images — BundleCard warp+shockwave system */}
-            <div className="grid grid-cols-2 gap-5" style={{ perspective: '1600px' }}>
-              <LandingImageCard
-                src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&q=80"
-                label="Sustainable Gifting" tag="Eco" accent="#5a8a6e" fromLeft={true}
-              />
-              <LandingImageCard
-                src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=800"
-                label="Eco Luxury Craft" tag="Artisan" accent="#b5a26a" fromLeft={false}
-              />
-            </div>
+  {/* ✅ IMAGE SECTION — NO CHANGE */}
+  <div className="grid grid-cols-2 gap-4">
+    <LandingImageCard
+      src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&q=80"
+      label="Sustainable Gifting"
+      tag="Eco"
+      accent="#5a8a6e"
+      fromLeft={true}
+    />
+    <LandingImageCard
+      src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=800"
+      label="Eco Luxury Craft"
+      tag="Artisan"
+      accent="#b5a26a"
+      fromLeft={false}
+    />
+  </div>
 
-            {/* Quote — same as Home testimonial */}
-            <motion.div
-              initial={{ opacity: 0 }} whileInView={{ opacity: 1 }}
-              viewport={{ once: false, amount: 0.3 }} transition={{ delay: 0.3, duration: 1 }}
-              className="mt-12 pt-8 border-t border-gray-200"
-            >
-              <p className="italic font-serif text-lg text-brand-dark-olive mb-4">"Sustainability is the ultimate sophistication."</p>
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-px bg-brand-olive" />
-                <p className="text-[10px] uppercase font-bold tracking-widest text-gray-500">EcoTwist Studio</p>
-              </div>
-            </motion.div>
-          </div>
+  {/* QUOTE */}
+  <motion.div className="mt-8 pt-6 border-t border-gray-200">
+    <p className="italic font-serif text-lg text-brand-dark-olive mb-3">
+      "Sustainability is the ultimate sophistication."
+    </p>
+    <div className="flex items-center gap-3">
+      <div className="w-6 h-px bg-brand-olive" />
+      <p className="text-[10px] uppercase font-bold tracking-widest text-gray-500">
+        EcoTwist Studio
+      </p>
+    </div>
+  </motion.div>
+
+</div>
 
           {/* ════ RIGHT COLUMN — Form ════ */}
           <motion.div
@@ -412,7 +432,7 @@ export const Contact = () => {
               {/* 3D tilt + live glare */}
               <motion.div ref={tiltRef} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}
                 style={{ rotateX: springX, rotateY: springY, transformStyle: 'preserve-3d', willChange: 'transform' }}
-                className="bg-white rounded-sm shadow-2xl border border-gray-100 overflow-hidden relative"
+                className="bg-white rounded-sm shadow-2xl border border-gray-100 overflow-visible relative"
               >
                 <motion.div className="absolute inset-0 pointer-events-none z-10" style={{ background: glareStyle }} />
 
@@ -424,7 +444,7 @@ export const Contact = () => {
                   transition={{ duration: 0.7, delay: 1.2, ease: [0.22, 1, 0.36, 1] }}
                   style={{ position: 'absolute', top: 0, left: 0, width: 3, height: '18%', background: '#b5a26a', transformOrigin: 'top', zIndex: 20 }} />
 
-                <div className="p-10 md:p-14">
+                <div className="p-10 md:p-16">
                   <motion.span
                     initial={{ opacity: 0, y: 12, letterSpacing: '0.1em' }}
                     animate={{ opacity: 1, y: 0, letterSpacing: '0.22em' }}
@@ -497,13 +517,14 @@ export const Contact = () => {
                   <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#b5a26a', margin: 0 }}>Response Time</p>
                   <p style={{ fontSize: 13, fontWeight: 700, margin: '2px 0 0', color: '#333' }}>Within 24 hours</p>
                 </motion.div>
+                
               </motion.div>
             </motion.div>
 
             {/* Watermark — same as Hero "Studio Edition" */}
-            <div className="absolute -bottom-8 -left-4 hidden lg:block pointer-events-none">
+            <div className="absolute -bottom-36 -left-4 overflow-visible lg:block pointer-events-none">
               <motion.p initial={{ opacity: 0 }} animate={{ opacity: 0.5 }} transition={{ delay: 1.5, duration: 0.8 }}
-                className="font-serif italic text-6xl text-brand-accent opacity-50">Contact Us</motion.p>
+                className="font-serif italic text-6xl text-[#e5d3a1] opacity-50">Contact Us</motion.p>
             </div>
           </motion.div>
 

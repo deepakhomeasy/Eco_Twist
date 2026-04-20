@@ -228,7 +228,7 @@ const SolutionCard = ({
       onMouseMove={tilt.handleMove}
       onMouseLeave={tilt.handleLeave}
       style={{ ...tilt.style, transformStyle: "preserve-3d" }}
-      className="group cursor-pointer relative w-[220px] sm:w-[230px] md:w-[240px]"
+      className="group cursor-pointer relative w-[auto] sm:w-[230px] md:w-[240px]"
     >
       {/* Image */}
       <div className="relative overflow-hidden rounded-lg shadow-md">

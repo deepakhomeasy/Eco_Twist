@@ -1,42 +1,47 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import logo from '../assests/logo.png'; // ✅ logo import
+import logo from '../assests/logo2.png'; // ✅ logo import
 export const Footer = () => {
   return (
     <footer className="bg-brand-charcoal text-white pt-20 pb-10 px-6">
       <div className="max-w-7xl mx-auto mb-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
           {/* Brand & Social */}
-          <div className="lg:col-span-4">
-            <Link to="/" className="flex items-center gap-3 mb-8 group w-fit">
-              
-              {/* ✅ LOGO ADDED */}
-              <img
-                src={logo}
-                alt="Ecotwist Logo"
-                className="h-20 w-auto object-contain group-hover:scale-105 transition"
-              />
 
-              {/* Optional: keep text with logo */}
-              <span className="font-bold tracking-widest text-2xl font-serif text-white uppercase">
-                ECOTWIST
-              </span>
-            </Link>
-            <p className="text-gray-400 text-sm leading-relaxed mb-8 max-w-sm">
-              Pioneering the future of corporate gifting through sustainable design, ethical sourcing, and circular economy principles.
-            </p>
-            <div className="flex gap-4">
-              {['Instagram', 'LinkedIn', 'Journal'].map((social) => (
-                <a
-                  key={social}
-                  href="#"
-                  className="text-[10px] uppercase tracking-widest font-bold text-gray-400 hover:text-white transition-colors"
-                >
-                  {social}
-                </a>
-              ))}
-            </div>
-          </div>
+
+          <div className="lg:col-span-4">
+  <Link to="/" className="flex flex-col items-start mb-8 group w-fit">
+
+    {/* LOGO */}
+    <img
+      src={logo}
+      alt="Ecotwist Logo"
+      className="h-16 sm:h-20 w-auto object-contain group-hover:scale-105 transition"
+    />
+
+    {/* TEXT BELOW LOGO */}
+    <span className="mt-2 font-bold tracking-widest text-xl sm:text-2xl font-serif text-white uppercase">
+      ECOTWIST
+    </span>
+
+  </Link>
+
+  <p className="text-gray-400 text-sm leading-relaxed mb-8 max-w-sm">
+    Pioneering the future of corporate gifting through sustainable design, ethical sourcing, and circular economy principles.
+  </p>
+
+  <div className="flex gap-4">
+    {['Instagram', 'LinkedIn', 'Journal'].map((social) => (
+      <a
+        key={social}
+        href="#"
+        className="text-[10px] uppercase tracking-widest font-bold text-gray-400 hover:text-white transition-colors"
+      >
+        {social}
+      </a>
+    ))}
+  </div>
+</div>
 
           {/* Links Grid */}
           <div className="lg:col-span-4 grid grid-cols-2 md:grid-cols-2 gap-8">
